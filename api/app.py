@@ -18,4 +18,4 @@ if __name__ == '__main__':
                         datefmt='%Y-%m-%d %H:%M:%S',
                         format='%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s')
 
-    app.run(debug=conf.DEBUG)
+    app.run(host="0.0.0.0", port=int("3000"), debug=conf.DEBUG)
