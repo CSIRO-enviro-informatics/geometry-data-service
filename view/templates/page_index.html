@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h1>Geometry Data API</h1>    
+    <h2>Starting points</h2>
+    <h3>Test endpoints</h3>
+    <ul>
+        <li>
+            <a href="{{ api_endpoint }}/pet/dog/Rex">Dog = Rex</a>
+        </li>
+        <li> <a href="{{ api_endpoint }}/geometry/victoria-places/moonee-valley-racecourse">Moonee Valley Racecourse</a> </li>
+        <li> <a href="{{ api_endpoint }}/geometry/victoria-places/queens-park">Queens Park</a> </li>
+    </ul>
+    
+    <h2>More information</h2>
+    <p>See the <a href="/about">About Page</a> for more information.</p>
+
+{% endblock %}

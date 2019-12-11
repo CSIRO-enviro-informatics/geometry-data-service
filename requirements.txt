@@ -1,0 +1,9 @@
+requests
+flask
+flask_paginate
+lxml
+rdflib
+pyldapi
+pytest
+shapely
+geojson

@@ -1,0 +1,13 @@
+{% extends "site_page_layout.html" %}
+
+{% block content %}
+    <h1>Geometry</h1>
+    {{ dataset }}
+    {{ id }}
+    <h2>Other views</h2>
+    <ul>
+       <li><a href="{{ uri }}?_format=text/turtle">text/turtle</a></li>
+       <li><a href="{{ uri }}?_format=application/json">application/json</a></li>
+       <li><a href="{{ uri }}?_format=text/plain">text/plain</a></li>
+    </ul>
+{% endblock %}
