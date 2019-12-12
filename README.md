@@ -30,3 +30,35 @@ PORT=3111
 ```
 
 Running `docker-compose up -d` will pick up the .env file settings.
+
+## Deploy with a Postgis DB using docker 
+
+In cases, where there isn't an existing Postgis and you would like to populate a Postgis DB with
+some geometries, you can use the following to set one up.
+
+The following command will setup a postgis database alongside the geometry API
+```
+$ docker-compose -f docker-compose.yml -f docker-compose.postgis.yml up -d
+```
+
+This currently uses the `kartoza/postgis` docker image (see https://github.com/kartoza/docker-postgis).
+You can use `psql` or other tools to populate the geometries into that DB.
+
+The only requirement from the geometry_data_service of the Postgis DB 
+is to have a table or view called `combined_geoms` with the structure:
+```
+ Column  |       Type        | Collation | Nullable | Default 
+---------+-------------------+-----------+----------+---------
+ id      | character varying |           |          | 
+ geom    | geometry          |           |          | 
+ dataset | text              |           |          | 
+```
+
+Where `id` is the local identifier for the geometry, `dataset` is the label for the dataset it comes from (e.g. asgs2016_sa1),
+and `geom` is the actual geometry.
+
+
+The following command will bring down the containers:
+```
+$ docker-compose -f docker-compose.yml -f docker-compose.postgis.yml down 
+```
