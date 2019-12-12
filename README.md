@@ -31,6 +31,17 @@ PORT=3111
 
 Running `docker-compose up -d` will pick up the .env file settings.
 
+### Configure geometry_data_service with a Postgis DB endpoint
+
+You can add variables in a .env file to override defaults in the docker-compose.yml file:
+```
+GSDB_DBNAME=gis
+GSDB_HOSTNAME=db
+GSDB_PORT=5432
+GSDB_USER=jon
+GSDB_PASS=jon
+```
+
 ## Deploy with a Postgis DB using docker 
 
 In cases, where there isn't an existing Postgis and you would like to populate a Postgis DB with
