@@ -98,11 +98,74 @@ def fetch_geom_from_db(dataset, geom_id):
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
-
    query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
    cur.execute(query)
    (id,dataset,geojson) = cur.fetchone()
-
    o = json.loads(geojson)
-
    return o
+
+
+@classes.route('/geometry/')
+def geometry_list():
+    """
+    The Register of Geometries
+    :return: HTTP Response
+    """
+
+    # get the total register count from the XML API
+    try:
+        page = request.values.get('page') if request.values.get('page') is not None else 1
+        page = int(page)
+        per_page = request.values.get('per_page') if request.values.get('per_page') is not None else 20
+        per_page=int(per_page)
+        items = fetch_items_from_db(page, per_page)
+    except Exception as e:
+        print(e)
+        return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
+
+    no_of_items = 10000000
+    r = pyldapi.RegisterRenderer(
+        request,
+        request.url,
+        'Geometries Register',
+        'A register of Geometries',
+        items,
+        ["http://example/geometry"],
+        no_of_items
+    )
+
+    return r.render()
+
+
+def fetch_items_from_db(page_current, records_per_page):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   offset = (page_current - 1) * records_per_page
+
+   s = ""
+   s += " SELECT id, dataset"
+   s += " FROM combined_geoms"
+   s += " ORDER BY id"
+   s += " LIMIT " + str(records_per_page)
+   s += " OFFSET " + str(offset)
+
+   results = []
+   cur.execute(s)
+   row = cur.fetchone()
+   while row:
+      (id,dataset) = cur.fetchone()
+      results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
+      row = cur.fetchone()
+
+   print(len(results))
+   return results
