@@ -2,6 +2,12 @@ version: "3.7"
 services:
   gservice:
     build: ./api
+    environment:
+      - GSDB_DBNAME=gis
+      - GSDB_HOSTNAME=db
+      - GSDB_PORT=5432
+      - GSDB_USER=jon
+      - GSDB_PASS=jon
     ports:
      - "3000:3000"
 

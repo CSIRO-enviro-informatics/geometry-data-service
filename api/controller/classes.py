@@ -1,5 +1,5 @@
 """
-This file contains all the HTTP routes for classes from the IGSN model, such as Samples and the Sample Register
+This file contains all the HTTP routes for classes used in this service
 """
 from flask import Blueprint, request, Response
 import _config as config
@@ -9,6 +9,9 @@ from io import BytesIO
 from lxml import etree
 from model.geometry import GeometryRenderer
 from model.pet import PetRenderer
+import psycopg2
+import json
+import os
 
 
 classes = Blueprint('classes', __name__)
@@ -71,7 +74,30 @@ def geom_instance(dataset, geom_id):
             instance = g
             break
     if instance is None:
-        return Response("Not Found", status=404)
+        geojson = fetch_geom_from_db(dataset,geom_id)
+        if geojson is None:
+           return Response("Not Found", status=404)
+   
+        geojson['id'] = geom_id
+        geojson['dataset'] = dataset
+        instance = geojson
     renderer = GeometryRenderer(request, request.base_url, instance, 'page_geometry.html')
     return renderer.render()
 
+
+def fetch_geom_from_db(dataset, geom_id):
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+
+   query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
+   cur.execute(query)
+   (id,dataset,geojson) = cur.fetchone()
+
+   o = json.loads(geojson)
+
+   return o

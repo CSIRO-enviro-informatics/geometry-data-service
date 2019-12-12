@@ -4,7 +4,7 @@ conn = psycopg2.connect(dbname = 'gis', host='127.0.0.1', port="25432", user = '
 cur = conn.cursor()
 
 query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'10604112630\';'
-cur.execute(query).fetchone()
+cur.execute(query)
 (id,dataset,geojson) = cur.fetchone()
 
 print(id)
