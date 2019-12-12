@@ -8,8 +8,9 @@ services:
       - GSDB_PORT=5432
       - GSDB_USER=jon
       - GSDB_PASS=jon
+      - PORT=3000
     ports:
-     - "3000:3000"
+     - "${PORT}:3000"
 
   db:
     image: kartoza/postgis:12.0
