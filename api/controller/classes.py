@@ -86,6 +86,11 @@ def geom_instance(dataset, geom_id):
 
 
 def fetch_geom_from_db(dataset, geom_id):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
+   """
    db_name = os.environ['GSDB_DBNAME']
    db_host = os.environ['GSDB_HOSTNAME']
    db_port = os.environ['GSDB_PORT']
