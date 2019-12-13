@@ -1,5 +1,5 @@
 """
-This file contains all the HTTP routes for classes from the IGSN model, such as Samples and the Sample Register
+This file contains all the HTTP routes for classes used in this service
 """
 from flask import Blueprint, request, Response
 import _config as config
@@ -9,6 +9,9 @@ from io import BytesIO
 from lxml import etree
 from model.geometry import GeometryRenderer
 from model.pet import PetRenderer
+import psycopg2
+import json
+import os
 
 
 classes = Blueprint('classes', __name__)
@@ -71,7 +74,127 @@ def geom_instance(dataset, geom_id):
             instance = g
             break
     if instance is None:
-        return Response("Not Found", status=404)
+        geojson = fetch_geom_from_db(dataset,geom_id)
+        if geojson is None:
+           return Response("Not Found", status=404)
+   
+        geojson['id'] = geom_id
+        geojson['dataset'] = dataset
+        instance = geojson
     renderer = GeometryRenderer(request, request.base_url, instance, 'page_geometry.html')
     return renderer.render()
 
+
+def fetch_geom_count_from_db():
+   """
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   query = 'select geom_total_count from combined_geom_count;'
+   try:
+      cur.execute(query)
+   except Exception as e:
+        print(e)
+        return None
+   res = cur.fetchone()
+   print(res[0])
+   return res[0] 
+
+def fetch_geom_from_db(dataset, geom_id):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   query = 'select id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
+   backup_query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
+   try:
+      cur.execute(query)
+   except Exception as e:
+        print(e)
+        conn.rollback()
+        cur.execute(backup_query)
+   (id,dataset,geojson) = cur.fetchone()
+   o = json.loads(geojson)
+   return o
+
+
+@classes.route('/geometry/')
+def geometry_list():
+    """
+    The Register of Geometries
+    :return: HTTP Response
+    """
+
+    # get the total register count from the XML API
+    try:
+        page = request.values.get('page') if request.values.get('page') is not None else 1
+        page = int(page)
+        per_page = request.values.get('per_page') if request.values.get('per_page') is not None else 20
+        per_page=int(per_page)
+        items = fetch_items_from_db(page, per_page)
+    except Exception as e:
+        print(e)
+        return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
+
+    no_of_items = fetch_geom_count_from_db()
+    print(per_page)
+    print(items)
+    r = pyldapi.RegisterRenderer(
+        request,
+        request.url,
+        'Geometries Register',
+        'A register of Geometries',
+        items,
+        ["http://example/geometry"],
+        no_of_items,
+        per_page=per_page
+    )
+
+    return r.render()
+
+
+def fetch_items_from_db(page_current, records_per_page):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   offset = (page_current - 1) * records_per_page
+
+   s = ""
+   s += " SELECT id, dataset"
+   s += " FROM combined_geoms"
+   s += " ORDER BY dataset,id"
+   s += " LIMIT " + str(records_per_page)
+   s += " OFFSET " + str(offset)
+
+   results = []
+   cur.execute(s)
+   record_list = cur.fetchall()
+   for record in record_list:
+      (id,dataset) = record
+      results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
+
+   print(s)
+   print(len(results))
+   return results

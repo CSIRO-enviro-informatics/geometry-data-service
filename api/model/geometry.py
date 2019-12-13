@@ -45,8 +45,9 @@ class GeometryRenderer(Renderer):
 
         g.add((s, RDF.type, GEO.Geometry))     
 
-        if self.instance['type'] == "Point":
-            g.add((s, RDF.type, SF.Point)) 
+        list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
+        if self.instance['type'] in list_of_geometry_types:
+            g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
             wkt = self._geojson_to_wkt()
             g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
 

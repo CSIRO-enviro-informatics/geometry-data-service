@@ -3,8 +3,12 @@ services:
   gservice:
     build: ./api
     environment:
-     - PORT=3000
+      #edit these to point to the right Postgis DB
+      - "GSDB_DBNAME=${GSDB_DBNAME:-gis}"
+      - "GSDB_HOSTNAME=${GSDB_HOSTNAME:-db}"
+      - "GSDB_PORT=${GSDB_PORT:-5432}"
+      - "GSDB_USER=${GSDB_USER:-jon}"
+      - "GSDB_PASS=${GSDB_PASS:-jon}"
     ports:
-#     - "3000:3000"
-     - "${PORT}:3000"
+     - "${PORT:-3000}:3000"
 

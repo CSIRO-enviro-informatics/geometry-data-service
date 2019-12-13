@@ -7,3 +7,4 @@ pyldapi
 pytest
 shapely
 geojson
+psycopg2
