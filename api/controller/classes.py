@@ -85,6 +85,26 @@ def geom_instance(dataset, geom_id):
     return renderer.render()
 
 
+def fetch_geom_count_from_db():
+   """
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   query = 'select geom_total_count from combined_geom_count;'
+   try:
+      cur.execute(query)
+   except Exception as e:
+        print(e)
+        return None
+   res = cur.fetchone()
+   print(res[0])
+   return res[0] 
+
 def fetch_geom_from_db(dataset, geom_id):
    """
    Assumes there is a Postgis database with connection config specified in system environment variables.
@@ -98,8 +118,14 @@ def fetch_geom_from_db(dataset, geom_id):
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
-   query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
-   cur.execute(query)
+   query = 'select id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
+   backup_query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
+   try:
+      cur.execute(query)
+   except Exception as e:
+        print(e)
+        conn.rollback()
+        cur.execute(backup_query)
    (id,dataset,geojson) = cur.fetchone()
    o = json.loads(geojson)
    return o
@@ -123,7 +149,9 @@ def geometry_list():
         print(e)
         return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
 
-    no_of_items = 10000000
+    no_of_items = fetch_geom_count_from_db()
+    print(per_page)
+    print(items)
     r = pyldapi.RegisterRenderer(
         request,
         request.url,
@@ -131,7 +159,8 @@ def geometry_list():
         'A register of Geometries',
         items,
         ["http://example/geometry"],
-        no_of_items
+        no_of_items,
+        per_page=per_page
     )
 
     return r.render()
@@ -155,17 +184,17 @@ def fetch_items_from_db(page_current, records_per_page):
    s = ""
    s += " SELECT id, dataset"
    s += " FROM combined_geoms"
-   s += " ORDER BY id"
+   s += " ORDER BY dataset,id"
    s += " LIMIT " + str(records_per_page)
    s += " OFFSET " + str(offset)
 
    results = []
    cur.execute(s)
-   row = cur.fetchone()
-   while row:
-      (id,dataset) = cur.fetchone()
+   record_list = cur.fetchall()
+   for record in record_list:
+      (id,dataset) = record
       results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
-      row = cur.fetchone()
 
+   print(s)
    print(len(results))
    return results
