@@ -1,13 +1,42 @@
-{% extends "site_page_layout.html" %}
+{% extends "geom_page_layout.html" %}
 
 {% block content %}
     <h1>Geometry</h1>
     {{ dataset }}
     {{ id }}
+
+    <div id="mapid"></div>
+
     <h2>Other views</h2>
     <ul>
        <li><a href="{{ uri }}?_format=text/turtle">text/turtle</a></li>
        <li><a href="{{ uri }}?_format=application/json">application/json</a></li>
        <li><a href="{{ uri }}?_format=text/plain">text/plain</a></li>
     </ul>
+
+    
+<script>
+
+
+	var mymap = L.map('mapid').setView([51.505, -0.09], 13);
+
+	L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		id: 'mapbox/streets-v11'
+	}).addTo(mymap);
+
+   fetch("{{ uri }}?_format=application/json")
+    .then(response => response.json())
+    .then(function(data) {
+       console.log(JSON.stringify(data));
+       var jsonLayer = L.geoJSON(data).addTo(mymap);
+       console.log(jsonLayer.getBounds());
+       mymap.fitBounds(jsonLayer.getBounds());
+
+    });
+
+</script>
 {% endblock %}
