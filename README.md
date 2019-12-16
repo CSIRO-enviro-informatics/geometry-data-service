@@ -17,7 +17,9 @@ Some toy examples are included in the repo. Once flask is running, go to http://
 
 ## Deploy using docker
 
-An alternative to the simple flask run is via docker. To use docker, you'll need to install `docker` and `docker-compose`.
+An alternative to the simple flask run is via docker. 
+
+To use docker, you'll need to install `docker` and `docker-compose`.
 
 You can then deploy via
 ```
@@ -30,6 +32,11 @@ PORT=3111
 ```
 
 Running `docker-compose up -d` will pick up the .env file settings.
+
+Otherwise, you can use the Docker Hub image at https://hub.docker.com/r/csiroenvinf/geometry-data-service.
+```
+docker pull csiroenvinf/geometry-data-service
+```
 
 ### Configure geometry_data_service with a Postgis DB endpoint
 
