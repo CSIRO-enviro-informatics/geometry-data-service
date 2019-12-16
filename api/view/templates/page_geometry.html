@@ -4,14 +4,16 @@
     <h1>Geometry</h1>
     <div class="geomdataset">Dataset: {{ dataset }}</div>
     <div class="geomid">ID: {{ id }}</div>
+    <div class="geomid">View: {{ view }}</div>
 
     <div id="mapid"></div>
 
     <h2>Other views</h2>
     <ul>
-       <li><a href="{{ uri }}?_format=text/turtle">text/turtle</a></li>
-       <li><a href="{{ uri }}?_format=application/json">application/json</a></li>
-       <li><a href="{{ uri }}?_format=text/plain">text/plain</a></li>
+       <li><a href="{{ uri }}?_format=text/turtle&_view={{view}}">text/turtle</a></li>
+       <li><a href="{{ uri }}?_format=application/json&_view={{view}}">application/json</a></li>
+       <li><a href="{{ uri }}?_format=text/plain&_view={{view}}">text/plain</a></li>
+       <li><a href="{{ uri }}?_format=text/html&_view=alternates">alternates</a></li>
     </ul>
 
     
@@ -26,7 +28,7 @@
 		id: 'mapbox/streets-v11'
 	}).addTo(mymap);
 
-   fetch("{{ uri }}?_format=application/json")
+   fetch("{{ uri }}?_format=application/json&_view={{ view }}")
     .then(response => response.json())
     .then(function(data) {
        console.log(JSON.stringify(data));
