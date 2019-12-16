@@ -64,6 +64,15 @@ geom_list = [
           -37.7661010374548
         ]
       }
+      , {
+        "dataset": "landmark",
+        "id": "sydney-opera-house",
+        "type": "Point",
+        "coordinates": [
+          151.2153,
+          -33.8568
+        ]
+      }
 ]
 
 @classes.route('/geometry/<string:dataset>/<string:geom_id>')
