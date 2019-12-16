@@ -11,7 +11,7 @@
         <h3>Instance <a href="{{ instance_uri }}">{{ instance_uri }}</a></h3>
     {% endif %}
     <p>Default view: <a href="{{ request.base_url }}?_view={{ default_view_token }}">{{ default_view_token }}</a></p>
-    <table class="pretty">
+    <table class="pretty alternates">
     <tr><th>View</th><th>Formats</th><th>View Desc.</th><th>View Namespace</th></tr>
     {% for v, vals in views.items() %}
             <tr>
