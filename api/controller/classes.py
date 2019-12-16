@@ -158,7 +158,7 @@ def geometry_list():
         'Geometries Register',
         'A register of Geometries',
         items,
-        ["http://example/geometry"],
+        ["http://www.opengis.net/ont/geosparql#Geometry"],
         no_of_items,
         per_page=per_page
     )
