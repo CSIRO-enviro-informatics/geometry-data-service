@@ -102,7 +102,7 @@ def fetch_geom_count_from_db():
         print(e)
         return None
    res = cur.fetchone()
-   print(res[0])
+   #print(res[0])
    return res[0] 
 
 def fetch_geom_from_db(dataset, geom_id):
@@ -150,8 +150,8 @@ def geometry_list():
         return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
 
     no_of_items = fetch_geom_count_from_db()
-    print(per_page)
-    print(items)
+    #print(per_page)
+    #print(items)
     r = pyldapi.RegisterRenderer(
         request,
         request.url,
@@ -195,6 +195,6 @@ def fetch_items_from_db(page_current, records_per_page):
       (id,dataset) = record
       results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
 
-   print(s)
-   print(len(results))
+   #print(s)
+   #print(len(results))
    return results
