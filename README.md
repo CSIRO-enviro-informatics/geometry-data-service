@@ -38,6 +38,12 @@ Otherwise, you can use the Docker Hub image at https://hub.docker.com/r/csiroenv
 docker pull csiroenvinf/geometry-data-service
 ```
 
+Run with environment variables
+```
+$ docker run  -e GSDB_DBNAME=gis -e GSDB_HOSTNAME=localhost -e GSDB_PORT=5432 -e GSDB_USER=user -e GSDB_PASS=pass -p 3000:3000 --network host -it csiroenvinf/geometry-data-service 
+```
+
+
 ### Configure geometry_data_service with a Postgis DB endpoint
 
 You can add variables in a .env file to override defaults in the docker-compose.yml file:
