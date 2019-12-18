@@ -36,3 +36,8 @@ $ docker pull csiroenvinf/geometry-data-service
 ```
 $ docker run --name gservice -d -p 3000:3000 csiroenvinf/geometry-data-service 
 ```
+
+Or with environment variables
+```
+$ docker run  -e GSDB_DBNAME=gis -e GSDB_HOSTNAME=localhost -e GSDB_PORT=5432 -e GSDB_USER=user -e GSDB_PASS=pass -p 3000:3000 --network host -it csiroenvinf/geometry-data-service 
+```
