@@ -44,10 +44,10 @@ class GeometryRenderer(Renderer):
             return Response(self._geojson_to_wkt(),
                             mimetype="text/plain", status=200)
         elif self.format == "text/html":
-            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view))
+            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view), mimetype="text/html", status=200)
         elif self.format == "text/turtle":
             return Response(self.export_rdf(self, rdf_mime='text/turtle'),
-                            mimetype="application/json", status=200)
+                            mimetype="text/turtle", status=200)
 
     def _render_centroidview(self):
         self.headers['Profile'] = 'http://example.org/def/centroidview'
@@ -59,10 +59,10 @@ class GeometryRenderer(Renderer):
             return Response(self._geojson_to_wkt(),
                             mimetype="text/plain", status=200)
         elif self.format == "text/html":
-            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view))
+            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view), mimetype="text/html", status=200)
         elif self.format == "text/turtle":
             return Response(self.export_rdf(self, rdf_mime='text/turtle'),
-                            mimetype="application/json", status=200)
+                            mimetype="text/turtle", status=200)
 
     def _render_simplifiedgeomview(self):
         self.headers['Profile'] = 'http://example.org/def/simplifiedgeomview'
@@ -74,10 +74,10 @@ class GeometryRenderer(Renderer):
             return Response(self._geojson_to_wkt(),
                             mimetype="text/plain", status=200)
         elif self.format == "text/html":
-            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view))
+            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view), mimetype="text/html", status=200)
         elif self.format == "text/turtle":
             return Response(self.export_rdf(self, rdf_mime='text/turtle'),
-                            mimetype="application/json", status=200)
+                            mimetype="text/turtle", status=200)
 
     def _render_alternates_view_html(self):
         return Response(

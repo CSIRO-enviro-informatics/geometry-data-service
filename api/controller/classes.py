@@ -13,6 +13,7 @@ import psycopg2
 import json
 import os
 
+import pprint
 
 classes = Blueprint('classes', __name__)
 
@@ -159,8 +160,6 @@ def geometry_list():
         return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
 
     no_of_items = fetch_geom_count_from_db()
-    #print(per_page)
-    #print(items)
     r = pyldapi.RegisterRenderer(
         request,
         request.url,
@@ -171,6 +170,9 @@ def geometry_list():
         no_of_items,
         per_page=per_page
     )
+    if hasattr(r, 'vf_error'):
+        pprint.pprint(r.vf_error)
+        return Response('The Geometries Register view is offline due to HTTP headers not able to be handled:\n{}\n\nThis usually happens on a newer version of the Google Chrome browser.\nPlease try a different browser like Firefox or Chrome v78 or earlier.'.format(r.vf_error), mimetype='text/plain', status=500)
 
     return r.render()
 
