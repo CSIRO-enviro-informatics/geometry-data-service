@@ -1,6 +1,6 @@
 # Geometry data service
 
-This implements a geometry data service for serving RESTful geometries over the web
+This implements a [geometry data service](https://github.com/CSIRO-enviro-informatics/loci.cat/issues/39#issue-535488760) for serving RESTful geometries over the web
 
 ## Quickstart 
 ```
