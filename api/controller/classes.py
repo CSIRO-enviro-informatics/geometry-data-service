@@ -112,8 +112,10 @@ def fetch_geom_count_from_db():
         print(e)
         return None
    res = cur.fetchone()
-   #print(res[0])
-   return res[0] 
+   count = res[0]
+   cur.close()
+   conn.close()
+   return count
 
 def fetch_geom_from_db(dataset, geom_id):
    """
@@ -137,6 +139,8 @@ def fetch_geom_from_db(dataset, geom_id):
         conn.rollback()
         cur.execute(backup_query)
    (id,dataset,geojson) = cur.fetchone()
+   cur.close()
+   conn.close()
    o = json.loads(geojson)
    return o
 
@@ -208,4 +212,6 @@ def fetch_items_from_db(page_current, records_per_page):
 
    #print(s)
    #print(len(results))
+   cur.close()
+   conn.close()
    return results

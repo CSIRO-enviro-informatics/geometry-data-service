@@ -149,6 +149,8 @@ class GeometryRenderer(Renderer):
       o['id'] = geom_id
       o['dataset'] = dataset
       self.instance = o
+      cur.close()
+      conn.close()
       return o
 
     def _fetch_simplified_geom_from_db(self):
@@ -180,6 +182,8 @@ class GeometryRenderer(Renderer):
       o['id'] = geom_id
       o['dataset'] = dataset
       self.instance = o
+      cur.close()
+      conn.close()
       return o
 
 
