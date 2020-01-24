@@ -21,6 +21,17 @@ SimplifiedGeomView = View("SimplifiedGeomView", "A profile of the geometry that 
                  'text/html', namespace="http://example.org/def/simplifiedgeomview")
 
 class GeometryRenderer(Renderer):
+    DATASET_RESOURCE_BASE_URI_LOOKUP = {
+        "asgs16_sa1": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel1",
+        "asgs16_sa2": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel2",
+        "asgs16_sa3": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel3",
+        "asgs16_sa4": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel4",
+        "asgs16_meshblocks": "http://linked.data.gov.au/dataset/asgs2016/meshblocks",
+        "asgs16_states": "http://linked.data.gov.au/dataset/asgs2016/stateorterritory",
+        "geofabric2_1_1_ahgfcontractedcatchment": "http://linked.data.gov.au/dataset/geofabric/contractedcatchment",
+        "geofabric2_1_1_riverregion": "http://linked.data.gov.au/dataset/geofabric/riverregion",
+        "geofabric2_1_1_drainagedivision": "http://linked.data.gov.au/dataset/geofabric/drainagedivision"
+    }
     def __init__(self, request, uri, instance, geom_html_template, **kwargs):
         self.views = {
                        'geometryview': GeometryView,
@@ -98,21 +109,33 @@ class GeometryRenderer(Renderer):
         s  = URIRef(self.uri)
         GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
         SF = Namespace("http://www.opengis.net/ont/sf#")  
+        GEOX = Namespace("http://linked.data.gov.au/def/geox#")
         nsm = NamespaceManager(g)
         nsm.bind('geo', 'http://www.opengis.net/ont/geosparql#')
         nsm.bind('sf', 'http://www.opengis.net/ont/sf#')
+        nsm.bind('geox', 'http://linked.data.gov.au/def/geox#')
 
         g.add((s, RDF.type, GEO.Geometry))     
 
         list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
         if self.instance['type'] in list_of_geometry_types:
             g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
+            resource_uri = self._find_resource_uris()
+            if resource_uri is not None:
+                g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
             wkt = self._geojson_to_wkt()
             g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
 
         return g.serialize(format=self._get_rdf_mimetype(rdf_mime), nsm=nsm)
 
-
+    def _find_resource_uris(self):
+        dataset = self.instance["dataset"]
+        id = self.instance["id"]
+        prefix = GeometryRenderer.DATASET_RESOURCE_BASE_URI_LOOKUP.get(dataset)
+        if prefix is None:
+            return None
+        return "{0}/{1}".format(prefix, id)
+        
     def _geojson_to_wkt(self):
         g2 = shape(self.instance)
         return g2.wkt
