@@ -9,6 +9,7 @@ from io import BytesIO
 from lxml import etree
 from model.geometry import GeometryRenderer
 from model.pet import PetRenderer
+from model.search_results import SearchResultsRenderer
 import psycopg2
 import json
 import os
@@ -43,6 +44,16 @@ def dog_instance(dog_id):
     if instance is None:
         return Response("Not Found", status=404)
     renderer = PetRenderer(request, request.base_url, instance, 'page_dog.html')
+    return renderer.render()
+
+
+@classes.route('/search/latlng/<string:latlng>')
+def search_by_latlng(latlng):
+    list_results = find_geometry_by_latlng(latlng)
+    if list_results is None:
+        return Response("Not Found", status=404)   
+        
+    renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
 
@@ -143,6 +154,24 @@ def fetch_geom_from_db(dataset, geom_id):
    conn.close()
    o = json.loads(geojson)
    return o
+
+
+def find_geometry_by_latlng(latlng):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for matching geoms based on input latlng parameters.
+   """
+   
+   
+
+   """
+   select id, dataset
+FROM combined_geoms_mat
+where ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(136.3475, -15.820000001),4326),3577) , geom);
+   """
+
+   return []
 
 
 @classes.route('/geometry/')
