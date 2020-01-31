@@ -52,7 +52,14 @@ def search_by_latlng(latlng):
     list_results = find_geometry_by_latlng(latlng)
     if list_results is None:
         return Response("Not Found", status=404)   
-        
+    renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
+    return renderer.render()
+
+@classes.route('/search/latlng/<string:latlng>/dataset/<string:dataset>')
+def search_by_latlng_and_dataset(latlng, dataset):
+    list_results = find_geometry_by_latlng(latlng, dataset=dataset)
+    if list_results is None:
+        return Response("Not Found", status=404)   
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
@@ -156,22 +163,49 @@ def fetch_geom_from_db(dataset, geom_id):
    return o
 
 
-def find_geometry_by_latlng(latlng):
+def find_geometry_by_latlng(latlng, dataset=None):
    """
    Assumes there is a Postgis database with connection config specified in system environment variables.
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for matching geoms based on input latlng parameters.
    """
-   
-   
+   if latlng is None or not("," in latlng):
+     return { 'count': -1, 'res': None, 'errcode': 1}
+   arrData = latlng.split(',')
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   query = 'select id, dataset from combined_geoms where ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),4326),3577) , geom);'.format(para1=arrData[0], para2=arrData[1])
+   if dataset is not None: 
+      query = 'select id, dataset from combined_geoms where dataset = \'{dataset}\' and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),4326),3577) , geom);'.format(para1=arrData[0], para2=arrData[1], dataset=dataset)
+   #print(query)
+   try:
+      cur.execute(query)
+   except Exception as e:
+        print(e)
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return { 'count': -1, 'res': None, 'errcode': 2}
+   results = cur.fetchall()
+   cur.close()
+   conn.close()
+   if results == None:
+     return { 'count': -1, 'res': None}
+   #print(results)
+   fmt_results = []
+   for r in results:
+      r_obj = {}
+      r_obj['id'] = r[0]
+      r_obj['dataset'] = r[1]
+      r_obj['path'] = "/geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
+      fmt_results.append(r_obj)
+   return { 'count': len(fmt_results), 'res': fmt_results }
 
-   """
-   select id, dataset
-FROM combined_geoms_mat
-where ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(136.3475, -15.820000001),4326),3577) , geom);
-   """
-
-   return []
 
 
 @classes.route('/geometry/')

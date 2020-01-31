@@ -26,8 +26,7 @@ class SearchResultsRenderer(Renderer):
             return Response(json.dumps(self.instance),
                             mimetype="application/json", status=200)
         elif self.format == "text/html":
-            return Response(render_template(self.search_html_template, **self.instance))
-
+            return Response( render_template(self.search_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view), mimetype="text/html", status=200)
 
     # All `Renderer` subclasses _must_ implement render
     def render(self):
