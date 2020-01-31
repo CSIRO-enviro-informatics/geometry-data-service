@@ -2,5 +2,17 @@
 
 {% block content %}
     <h1>Search results</h1>
+
+    <p>Found {{count}} matches for lat-long coordinate ({{latlng}}).</p>
+
+    {% for r in res %}
+    <div>
+       <ul>
+         <li>ID: {{r.id}}</li>
+         <li>Dataset: {{r.dataset}}</li>
+         <li>Link: <a href="{{r.path}}">{{r.path}}</a></li>
+       </ul>
+    </div>
+    {% endfor %}
         
 {% endblock %}

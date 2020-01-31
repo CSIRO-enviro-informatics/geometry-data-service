@@ -52,6 +52,7 @@ def search_by_latlng(latlng):
     list_results = find_geometry_by_latlng(latlng)
     if list_results is None:
         return Response("Not Found", status=404)   
+    list_results['latlng'] = latlng
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
@@ -60,6 +61,7 @@ def search_by_latlng_and_dataset(latlng, dataset):
     list_results = find_geometry_by_latlng(latlng, dataset=dataset)
     if list_results is None:
         return Response("Not Found", status=404)   
+    list_results['latlng'] = latlng
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
