@@ -6,6 +6,7 @@ import requests
 from rdflib import Graph, URIRef, RDF, RDFS, XSD, OWL, Namespace, Literal, BNode
 import _config as config
 import json
+from .mappings import DatasetMappings
 
 
 SearchResultsView = View("SearchResultsView", "A profile of search results view.", ['text/html', 'application/json'],

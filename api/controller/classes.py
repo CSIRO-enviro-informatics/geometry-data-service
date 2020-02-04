@@ -10,6 +10,7 @@ from lxml import etree
 from model.geometry import GeometryRenderer
 from model.pet import PetRenderer
 from model.search_results import SearchResultsRenderer
+from model.mappings import DatasetMappings 
 import psycopg2
 import json
 import os
@@ -49,19 +50,28 @@ def dog_instance(dog_id):
 
 @classes.route('/search/latlng/<string:latlng>')
 def search_by_latlng(latlng):
-    list_results = find_geometry_by_latlng(latlng)
+    crs = 4326
+    if 'crs' in request.args:
+       crs = request.args.get('crs','4326')
+    list_results = find_geometry_by_latlng(latlng, crs=crs)
     if list_results is None:
         return Response("Not Found", status=404)   
     list_results['latlng'] = latlng
+    list_results['crs'] = crs
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
 @classes.route('/search/latlng/<string:latlng>/dataset/<string:dataset>')
 def search_by_latlng_and_dataset(latlng, dataset):
-    list_results = find_geometry_by_latlng(latlng, dataset=dataset)
+    crs = 4326
+    if 'crs' in request.args:
+       crs = request.args.get('crs','4326')
+    list_results = find_geometry_by_latlng(latlng, crs=crs, dataset=dataset)
     if list_results is None:
         return Response("Not Found", status=404)   
     list_results['latlng'] = latlng
+    list_results['crs'] = crs
+    list_results['dataset'] = dataset
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
@@ -165,11 +175,12 @@ def fetch_geom_from_db(dataset, geom_id):
    return o
 
 
-def find_geometry_by_latlng(latlng, dataset=None):
+def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    """
    Assumes there is a Postgis database with connection config specified in system environment variables.
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for matching geoms based on input latlng parameters.
+   Default CRS is WGS84 (4326)
    """
    if latlng is None or not("," in latlng):
      return { 'count': -1, 'res': None, 'errcode': 1}
@@ -181,9 +192,9 @@ def find_geometry_by_latlng(latlng, dataset=None):
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
-   query = 'select id, dataset from combined_geoms where ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),4326),3577) , geom);'.format(para1=arrData[0], para2=arrData[1])
+   query = 'select id, dataset from combined_geoms where ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),{crs}),3577) , geom);'.format(para1=arrData[0], para2=arrData[1], crs=crs)
    if dataset is not None: 
-      query = 'select id, dataset from combined_geoms where dataset = \'{dataset}\' and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),4326),3577) , geom);'.format(para1=arrData[0], para2=arrData[1], dataset=dataset)
+      query = 'select id, dataset from combined_geoms where dataset = \'{dataset}\' and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),{crs}),3577) , geom);'.format(para1=arrData[0], para2=arrData[1], dataset=dataset, crs=crs)
    #print(query)
    try:
       cur.execute(query)
@@ -204,7 +215,8 @@ def find_geometry_by_latlng(latlng, dataset=None):
       r_obj = {}
       r_obj['id'] = r[0]
       r_obj['dataset'] = r[1]
-      r_obj['path'] = "/geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
+      r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
+      r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
       fmt_results.append(r_obj)
    return { 'count': len(fmt_results), 'res': fmt_results }
 
