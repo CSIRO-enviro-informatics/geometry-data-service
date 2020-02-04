@@ -1,1 +1,3 @@
-Placeholder for GDS user documentation
+# Geometry Data Service
+
+Placeholder for GDS user documentation ... coming soon...
