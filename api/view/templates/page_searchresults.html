@@ -15,7 +15,10 @@
        <ul>
          <li>ID: {{r.id}}</li>
          <li>Dataset: {{r.dataset}}</li>
-         <li>Link: <a href="{{r.geometry}}">{{r.geometry}}</a></li>
+         <li>Link to geometry: <a href="{{r.geometry}}">{{r.geometry}}</a></li>
+         {% if r.feature %}
+            <li>Link to feature: <a href="{{r.feature}}">{{r.feature}}</a></li>
+        {% endif %}
        </ul>
     </div>
     {% endfor %}
