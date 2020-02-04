@@ -26,6 +26,10 @@
         
 
     <p>
-        [ <a href="{{request.url}}&_format=application/json">View results as JSON</a> ]
+        {% if 'crs' in request.args %}
+        [ <a href="{{request.base_url}}?{{request.query_string.decode("utf-8")}}&_format=application/json">View results as JSON</a> ]
+        {% else %}
+        [ <a href="{{request.base_url}}?_format=application/json">View results as JSON</a> ]
+        {% endif %}
     </p>
 {% endblock %}
