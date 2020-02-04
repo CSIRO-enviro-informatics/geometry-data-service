@@ -4,7 +4,10 @@
     <h1>Geometry</h1>
     <div class="geomdataset">Dataset: {{ dataset }}</div>
     <div class="geomid">ID: {{ id }}</div>
-    <div class="geomid">View: {{ view }}</div>
+    <div class="geomview">View: {{ view }}</div>
+    {% if feature %}  
+    <div class="feature">Feature: <a href="{{ feature }}">{{feature}}</a></div>
+    {% endif %}
 
     <div id="mapid"></div>
 

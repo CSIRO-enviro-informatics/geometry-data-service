@@ -47,6 +47,7 @@ class GeometryRenderer(Renderer):
         self.geom_html_template = geom_html_template
         self.uri = uri
         self.request= request
+        self.instance['feature'] = self._find_resource_uris()
 
     def _render_geometryview(self):
         self.headers['Profile'] = 'http://example.org/def/geometryview'
