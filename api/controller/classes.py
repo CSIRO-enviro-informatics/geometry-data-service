@@ -160,14 +160,14 @@ def fetch_geom_from_db(dataset, geom_id):
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
-   query = 'select id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) from combined_geoms where id = \'%s\' and dataset=\'%s\';'
-   backup_query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'%s\' and dataset=\'%s\';'
+   query = 'SELECT id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) FROM combined_geoms WHERE id = %s AND dataset=%s;'
+   backup_query = 'SELECT id, dataset, ST_AsGeoJSON(geom) FROM combined_geoms WHERE id = %s and dataset=%s;'
    try:
-      cur.execute(query, geom_id, dataset)
+      cur.execute(query, (geom_id, dataset))
    except Exception as e:
         print(e)
         conn.rollback()
-        cur.execute(backup_query, geom_id, dataset)
+        cur.execute(backup_query, (str(geom_id), str(dataset)))
    (id,dataset,geojson) = cur.fetchone()
    cur.close()
    conn.close()
@@ -196,10 +196,10 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    #query 1: no dataset specified so query all
    query_list.append('SELECT id, dataset FROM combined_geoms WHERE ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
    #query 2: dataset _is_ specified so query by dataset
-   query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = \'%s\' and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);'
-   if dataset is not None: 
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = %s and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
+   if dataset is None: 
       try:
-         cur.execute(query_list[0], dataset, arrData[0], arrData[1], crs)
+         cur.execute(query_list[0], (str(arrData[0]), str(arrData[1]), str(crs)))
       except Exception as e:
            print(e)
            conn.rollback()
@@ -208,13 +208,13 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
            return { 'count': -1, 'res': [], 'errcode': 2}
    else:
       try:
-         cur.execute(query_list[1], arrData[0], arrData[1], crs)
+         cur.execute(query_list[1], (str(dataset), str(arrData[0]), str(arrData[1]), str(crs)))
       except Exception as e:
            print(e)
            conn.rollback()
            cur.close()
            conn.close()
-           return { 'count': -1, 'res': [], 'errcode': 3}
+           return { 'count': -1, 'res': [], 'errcode': 3, 'x': str(arrData[0]), 'y': str(arrData[1])}
       
    results = cur.fetchall()
    cur.close()
