@@ -160,14 +160,14 @@ def fetch_geom_from_db(dataset, geom_id):
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
-   query = 'select id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
-   backup_query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'{id}\' and dataset=\'{dataset}\';'.format(id=geom_id, dataset=dataset)
+   query = 'select id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) from combined_geoms where id = \'%s\' and dataset=\'%s\';'
+   backup_query = 'select id, dataset, ST_AsGeoJSON(geom) from combined_geoms where id = \'%s\' and dataset=\'%s\';'
    try:
-      cur.execute(query)
+      cur.execute(query, geom_id, dataset)
    except Exception as e:
         print(e)
         conn.rollback()
-        cur.execute(backup_query)
+        cur.execute(backup_query, geom_id, dataset)
    (id,dataset,geojson) = cur.fetchone()
    cur.close()
    conn.close()
@@ -192,23 +192,35 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
-   query = 'select id, dataset from combined_geoms where ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),{crs}),3577) , geom);'.format(para1=arrData[0], para2=arrData[1], crs=crs)
+   query_list = []
+   #query 1: no dataset specified so query all
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
+   #query 2: dataset _is_ specified so query by dataset
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = \'%s\' and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);'
    if dataset is not None: 
-      query = 'select id, dataset from combined_geoms where dataset = \'{dataset}\' and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point({para1}, {para2}),{crs}),3577) , geom);'.format(para1=arrData[0], para2=arrData[1], dataset=dataset, crs=crs)
-   #print(query)
-   try:
-      cur.execute(query)
-   except Exception as e:
-        print(e)
-        conn.rollback()
-        cur.close()
-        conn.close()
-        return { 'count': -1, 'res': None, 'errcode': 2}
+      try:
+         cur.execute(query_list[0], dataset, arrData[0], arrData[1], crs)
+      except Exception as e:
+           print(e)
+           conn.rollback()
+           cur.close()
+           conn.close()
+           return { 'count': -1, 'res': [], 'errcode': 2}
+   else:
+      try:
+         cur.execute(query_list[1], arrData[0], arrData[1], crs)
+      except Exception as e:
+           print(e)
+           conn.rollback()
+           cur.close()
+           conn.close()
+           return { 'count': -1, 'res': [], 'errcode': 3}
+      
    results = cur.fetchall()
    cur.close()
    conn.close()
    if results == None:
-     return { 'count': -1, 'res': None}
+     return { 'count': -1, 'res': []}
    #print(results)
    fmt_results = []
    for r in results:
