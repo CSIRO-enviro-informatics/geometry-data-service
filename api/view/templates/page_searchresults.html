@@ -1,0 +1,35 @@
+{% extends "site_page_layout.html" %}
+
+{% block content %}
+    <h1>Search results</h1>
+
+    <p>
+        Found {{count}} matches for lat-long coordinate ({{latlng}}, SRID={{crs}})
+        {% if dataset %}
+          for '<span class='dataset'>{{dataset}}</span>'
+        {% endif %}
+        <br/>
+    </p>
+
+    {% for r in res %}
+    <div>
+       <ul>
+         <li>ID: {{r.id}}</li>
+         <li>Dataset: {{r.dataset}}</li>
+         <li>Link to geometry: <a href="{{r.geometry}}">{{r.geometry}}</a></li>
+         {% if r.feature %}
+            <li>Link to feature: <a href="{{r.feature}}">{{r.feature}}</a></li>
+        {% endif %}
+       </ul>
+    </div>
+    {% endfor %}
+        
+
+    <p>
+        {% if 'crs' in request.args %}
+        [ <a href="{{request.base_url}}?{{request.query_string.decode("utf-8")}}&_format=application/json">View results as JSON</a> ]
+        {% else %}
+        [ <a href="{{request.base_url}}?_format=application/json">View results as JSON</a> ]
+        {% endif %}
+    </p>
+{% endblock %}
