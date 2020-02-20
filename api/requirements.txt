@@ -3,8 +3,11 @@ flask
 flask_paginate
 lxml
 rdflib
-pyldapi
+pyldapi<3.0
 pytest
 shapely
 geojson
 psycopg2
+flask-cors
+flask_swagger_ui
+flask-restplus
