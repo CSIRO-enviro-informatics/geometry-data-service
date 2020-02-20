@@ -14,7 +14,7 @@ app.register_blueprint(classes.classes)
 
 ### swagger specific ###
 SWAGGER_URL = '/api/doc'
-API_URL = '/static/swagger.json'
+API_URL = '/static/openapi.json'
 SWAGGERUI_BLUEPRINT = get_swaggerui_blueprint(
     SWAGGER_URL,
     API_URL,
