@@ -10,7 +10,7 @@ app = Flask(__name__, template_folder=conf.TEMPLATES_DIR, static_folder=conf.STA
 CORS(app)
 
 app.register_blueprint(pages.pages)
-app.register_blueprint(classes.classes, url_prefix='/api/v1')
+app.register_blueprint(classes.classes)
 
 ### swagger specific ###
 SWAGGER_URL = '/api/doc'
