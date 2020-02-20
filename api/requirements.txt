@@ -9,3 +9,5 @@ shapely
 geojson
 psycopg2
 flask-cors
+flask_swagger_ui
+flask-restplus
