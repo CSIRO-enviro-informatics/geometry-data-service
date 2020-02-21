@@ -4,7 +4,7 @@ The Geometry Data Service (GDS) provides APIs for serving (spatial) geometries a
 
 Background to the GDS can be found at the [original geometry data service github issue](https://github.com/CSIRO-enviro-informatics/loci.cat/issues/39#issue-535488760).
 
-See this link to the [API](/api/) for the OpenAPI spec.
+See this link to the [API](api.html) for the OpenAPI spec.
 
 ## Views supported
 
