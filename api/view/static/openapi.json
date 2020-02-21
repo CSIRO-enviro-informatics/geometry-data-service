@@ -27,6 +27,47 @@
         ],
         "summary": "List geometries available",
         "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page ID. Defaults to 1 if not specified",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page. Defaults to 10 if none specified.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain",
+                "text/html",
+                "application/rdf+xml",
+                "application/ld+json",
+                "text/n3",
+                "application/n-triples"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -81,7 +122,7 @@
         "tags": [
           "geometry"
         ],
-        "summary": "Get geometry instance",
+        "summary": "Get individual geometry",
         "description": "",
         "responses": {
           "200": {
@@ -164,7 +205,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get geometry instances that contain specified position",
+        "summary": "Get individual geometries that contain the specified position",
         "description": "",
         "responses": {
           "200": {
@@ -222,7 +263,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get geometry instances that contain specified position for a specified dataset",
+        "summary": "Get individual geometries that contain the specified position and are associated with the dataset specified.",
         "description": "",
         "responses": {
           "200": {
