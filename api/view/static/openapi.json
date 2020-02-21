@@ -282,7 +282,7 @@
             }
           }
         },
-        "operationId": "searchGeomByLatLngAndDatasetId",
+        "operationId": "searchGeomByPositionAndDataset",
         "parameters": [
           {
             "name": "x",
