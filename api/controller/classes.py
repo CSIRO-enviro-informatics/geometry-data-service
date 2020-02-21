@@ -151,18 +151,16 @@ def geometry_list():
     The Register of Geometries
     :return: HTTP Response
     """
-
     # get the total register count from the XML API
     try:
         page = request.values.get('page') if request.values.get('page') is not None else 1
         page = int(page)
         per_page = request.values.get('per_page') if request.values.get('per_page') is not None else 20
         per_page=int(per_page)
-        items = fetch_items_from_db(page, per_page)
+        items = fetch_geom_items_from_db(page, per_page)
     except Exception as e:
         print(e)
         return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
-
     no_of_items = fetch_geom_count_from_db()
     r = pyldapi.RegisterRenderer(
         request,
@@ -177,11 +175,10 @@ def geometry_list():
     if hasattr(r, 'vf_error'):
         pprint.pprint(r.vf_error)
         return Response('The Geometries Register view is offline due to HTTP headers not able to be handled:\n{}\n\nThis usually happens on a newer version of the Google Chrome browser.\nPlease try a different browser like Firefox or Chrome v78 or earlier.'.format(r.vf_error), mimetype='text/plain', status=500)
-
     return r.render()
 
 
-def fetch_items_from_db(page_current, records_per_page):
+def fetch_geom_items_from_db(page_current, records_per_page):
    """
    Assumes there is a Postgis database with connection config specified in system environment variables.
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
@@ -195,23 +192,102 @@ def fetch_items_from_db(page_current, records_per_page):
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
    cur = conn.cursor()
    offset = (page_current - 1) * records_per_page
-
    s = ""
    s += " SELECT id, dataset"
    s += " FROM combined_geoms"
    s += " ORDER BY dataset,id"
    s += " LIMIT " + str(records_per_page)
    s += " OFFSET " + str(offset)
-
    results = []
    cur.execute(s)
    record_list = cur.fetchall()
    for record in record_list:
       (id,dataset) = record
       results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
-
-   #print(s)
-   #print(len(results))
    cur.close()
    conn.close()
    return results
+
+@classes.route('/dataset/')
+def dataset_list():
+    """
+    The Register of Datasets
+    :return: HTTP Response
+    """
+    # get the total register count from the XML API
+    try:
+        page = request.values.get('page') if request.values.get('page') is not None else 1
+        page = int(page)
+        per_page = request.values.get('per_page') if request.values.get('per_page') is not None else 20
+        per_page=int(per_page)
+        items = fetch_dataset_items_from_db(page, per_page)
+    except Exception as e:
+        print(e)
+        return Response('The Datasets Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
+    no_of_items = fetch_dataset_count_from_db()
+    r = pyldapi.RegisterRenderer(
+        request,
+        request.url,
+        'Datasets Register',
+        'A register of Datasets',
+        items,
+        ["http://www.w3.org/ns/dcat#Dataset"],
+        no_of_items,
+        per_page=per_page
+    )
+    if hasattr(r, 'vf_error'):
+        pprint.pprint(r.vf_error)
+        return Response('The Datasets Register view is offline due to HTTP headers not able to be handled:\n{}\n\nThis usually happens on a newer version of the Google Chrome browser.\nPlease try a different browser like Firefox or Chrome v78 or earlier.'.format(r.vf_error), mimetype='text/plain', status=500)
+    return r.render()
+
+def fetch_dataset_items_from_db(page_current, records_per_page):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for the datasets.
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   offset = (page_current - 1) * records_per_page
+   s = ""
+   s += " SELECT DISTINCT dataset"
+   s += " FROM combined_geoms"
+   s += " ORDER BY dataset"
+   s += " LIMIT " + str(records_per_page)
+   s += " OFFSET " + str(offset)
+   results = []
+   cur.execute(s)
+   record_list = cur.fetchall()
+   for record in record_list:
+      (dataset) = record
+      results.append((dataset[0], dataset[0]))
+   cur.close()
+   conn.close()
+   return results
+
+def fetch_dataset_count_from_db():
+   """
+   """
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   cur = conn.cursor()
+   query = 'SELECT count(DISTINCT dataset) FROM combined_geoms;'
+   try:
+      cur.execute(query)
+   except Exception as e:
+        print(e)
+        return None
+   res = cur.fetchone()
+   count = res[0]
+   cur.close()
+   conn.close()
+   return count
