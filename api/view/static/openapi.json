@@ -76,7 +76,7 @@
         }
       }
     },
-    "/geometry/{dataset_geomId}": {
+    "/geometry/{geomId}": {
       "get": {
         "tags": [
           "geometry"
@@ -115,15 +115,45 @@
             }
           }
         },
-        "operationId": "getGeometryByDatasetIdGeomId",
+        "operationId": "getGeometryByGeomId",
         "parameters": [
           {
-            "name": "dataset_geomId",
+            "name": "geomId",
             "in": "path",
-            "description": "Dataset and Geometry ID",
+            "description": "Geometry ID",
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "_view",
+            "in": "query",
+            "description": "View. If none selected, defaults to 'geometryview'.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "geometryview",
+                "centroid",
+                "simplifiedgeom",
+                "alternates"
+              ]
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain"
+              ]
             }
           }
         ]
@@ -134,7 +164,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get geometry instance",
+        "summary": "Get geometry instances that contain specified position",
         "description": "",
         "responses": {
           "200": {
@@ -153,7 +183,7 @@
             }
           }
         },
-        "operationId": "searchGeomByLatLng",
+        "operationId": "searchGeomByPosition",
         "parameters": [
           {
             "name": "x",
@@ -192,7 +222,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get geometry instance",
+        "summary": "Get geometry instances that contain specified position for a specified dataset",
         "description": "",
         "responses": {
           "200": {
