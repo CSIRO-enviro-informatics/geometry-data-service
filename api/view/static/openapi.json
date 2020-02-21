@@ -15,6 +15,10 @@
       "description": "Geometries"
     },
     {
+      "name": "dataset",
+      "description": "Dataset"
+    },
+    {
       "name": "search",
       "description": "Perform search functions"
     }
@@ -198,6 +202,103 @@
             }
           }
         ]
+      }
+    },
+    "/dataset": {
+      "get": {
+        "tags": [
+          "dataset"
+        ],
+        "summary": "List datasets available",
+        "description": "Lists datasets available",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page ID. Defaults to 1 if not specified",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page. Defaults to 10 if none specified.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain",
+                "text/html",
+                "application/rdf+xml",
+                "application/ld+json",
+                "text/n3",
+                "application/n-triples"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/turtle": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rdf+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/n3": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-triples": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/search/latlng/{x},{y}": {
