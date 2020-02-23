@@ -8,6 +8,7 @@ import requests
 from io import BytesIO
 from lxml import etree
 from model.geometry import GeometryRenderer
+from model.dataset import DatasetRenderer
 from model.pet import PetRenderer
 import psycopg2
 import json
@@ -239,6 +240,13 @@ def dataset_list():
         pprint.pprint(r.vf_error)
         return Response('The Datasets Register view is offline due to HTTP headers not able to be handled:\n{}\n\nThis usually happens on a newer version of the Google Chrome browser.\nPlease try a different browser like Firefox or Chrome v78 or earlier.'.format(r.vf_error), mimetype='text/plain', status=500)
     return r.render()
+
+@classes.route('/dataset/<string:dataset_id>')
+def dataset_instance(dataset_id):
+    instance = None
+    instance = { "id": dataset_id }
+    renderer = DatasetRenderer(request, request.base_url, instance, 'page_dataset.html')
+    return renderer.render()
 
 def fetch_dataset_items_from_db(page_current, records_per_page):
    """
