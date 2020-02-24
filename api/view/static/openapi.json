@@ -15,6 +15,10 @@
       "description": "Geometries"
     },
     {
+      "name": "dataset",
+      "description": "Dataset"
+    },
+    {
       "name": "search",
       "description": "Perform search functions"
     }
@@ -27,6 +31,47 @@
         ],
         "summary": "List geometries available",
         "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page ID. Defaults to 1 if not specified",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page. Defaults to 10 if none specified.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain",
+                "text/html",
+                "application/rdf+xml",
+                "application/ld+json",
+                "text/n3",
+                "application/n-triples"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -76,12 +121,12 @@
         }
       }
     },
-    "/geometry/{dataset_geomId}": {
+    "/geometry/{geomId}": {
       "get": {
         "tags": [
           "geometry"
         ],
-        "summary": "Get geometry instance",
+        "summary": "Get individual geometry",
         "description": "",
         "responses": {
           "200": {
@@ -115,15 +160,225 @@
             }
           }
         },
-        "operationId": "getGeometryByDatasetIdGeomId",
+        "operationId": "getGeometryByGeomId",
         "parameters": [
           {
-            "name": "dataset_geomId",
+            "name": "geomId",
             "in": "path",
-            "description": "Dataset and Geometry ID",
+            "description": "Geometry ID",
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "_view",
+            "in": "query",
+            "description": "View. If none selected, defaults to 'geometryview'.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "geometryview",
+                "centroid",
+                "simplifiedgeom",
+                "alternates"
+              ]
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/dataset": {
+      "get": {
+        "tags": [
+          "dataset"
+        ],
+        "summary": "List datasets available",
+        "description": "Lists datasets available",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page ID. Defaults to 1 if not specified",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page. Defaults to 10 if none specified.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain",
+                "text/html",
+                "application/rdf+xml",
+                "application/ld+json",
+                "text/n3",
+                "application/n-triples"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/turtle": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rdf+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/n3": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-triples": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dataset/{datasetId}": {
+      "get": {
+        "tags": [
+          "dataset"
+        ],
+        "summary": "Get individual dataset",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/turtle": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/geo+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getDatasetById",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "description": "datasetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "_view",
+            "in": "query",
+            "description": "View. If none selected, defaults to 'default'.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "geometryview",
+                "centroid",
+                "simplifiedgeom",
+                "alternates"
+              ]
+            }
+          },
+          {
+            "name": "_format",
+            "in": "query",
+            "description": "Media type. If none selected, defaults to 'text/html' or whatever is in the Accept header.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text/html",
+                "application/json",
+                "text/turtle",
+                "text/plain"
+              ]
             }
           }
         ]
@@ -134,7 +389,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get geometry instance",
+        "summary": "Get individual geometries that contain the specified position",
         "description": "",
         "responses": {
           "200": {
@@ -153,7 +408,7 @@
             }
           }
         },
-        "operationId": "searchGeomByLatLng",
+        "operationId": "searchGeomByPosition",
         "parameters": [
           {
             "name": "x",
@@ -192,7 +447,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get geometry instance",
+        "summary": "Get individual geometries that contain the specified position and are associated with the dataset specified.",
         "description": "",
         "responses": {
           "200": {
@@ -211,7 +466,7 @@
             }
           }
         },
-        "operationId": "searchGeomByLatLngAndDatasetId",
+        "operationId": "searchGeomByPositionAndDataset",
         "parameters": [
           {
             "name": "x",

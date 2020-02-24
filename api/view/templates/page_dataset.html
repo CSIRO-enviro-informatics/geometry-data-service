@@ -1,0 +1,15 @@
+{% extends "page_layout.html" %}
+
+{% block content %}
+    <h1>Dataset</h1>
+    <p class="renderid">ID: {{ id }}</p>
+    <p class="rendernotes">No other information at this time.</p>
+
+    <h2>Other views</h2>
+    <ul>
+       <li><a href="{{ uri }}?_format=text/turtle&_view={{view}}">text/turtle</a></li>
+       <li><a href="{{ uri }}?_format=application/json&_view={{view}}">application/json</a></li>
+       <li><a href="{{ uri }}?_format=text/plain&_view={{view}}">text/plain</a></li>
+       <li><a href="{{ uri }}?_format=text/html&_view=alternates">alternates</a></li>
+    </ul>
+{% endblock %}
