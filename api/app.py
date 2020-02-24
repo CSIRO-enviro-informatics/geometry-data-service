@@ -5,12 +5,12 @@ from flask import Flask
 from controller import pages, classes
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 app = Flask(__name__, template_folder=conf.TEMPLATES_DIR, static_folder=conf.STATIC_DIR)
 CORS(app)
-app.wsgi_app = ProxyFix(app.wsgi_app)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_host=1)
 
 
 app.register_blueprint(pages.pages)
