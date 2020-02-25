@@ -1,3 +1,5 @@
+![Docker Pulls](https://img.shields.io/docker/pulls/csiroenvinf/geometry-data-service)
+
 # Geometry data service
 
 The Geometry Data Service (GDS) provides APIs for serving (spatial) geometries as RESTful separable first-class objects to spatial features over the web. The GDS provides access to multiple views of spatial geometries for the relevant reporting geographies included in Loc-I as Linked Data. Geometry data is provided in different forms (e.g. geometry as-is, centroid, metadata-only) and formats/serialisations (e.g. WKT, GeoJSON, SHP, RDF/GeoSPARQL). The GDS achieves this via Content Negotiation on spatial features stored in the Loc-I Geo-database, which hosts the geometries. This allows spatial features in Loc-I to embed URI-references to the geometry instead of embedding a geometry literal, optimising the RDF graph store for semantic queries rather than geospatial.
