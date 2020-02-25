@@ -1,0 +1,3 @@
+# Geometry Data Service
+
+Placeholder for GDS user documentation ... coming soon...

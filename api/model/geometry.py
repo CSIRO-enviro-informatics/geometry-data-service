@@ -8,6 +8,7 @@ from shapely.geometry import shape
 from pprint import pprint
 import psycopg2
 import os
+from .mappings import DatasetMappings
 
 
 
@@ -21,17 +22,7 @@ SimplifiedGeomView = View("SimplifiedGeomView", "A profile of the geometry that 
                  'text/html', namespace="http://example.org/def/simplifiedgeomview")
 
 class GeometryRenderer(Renderer):
-    DATASET_RESOURCE_BASE_URI_LOOKUP = {
-        "asgs16_sa1": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel1",
-        "asgs16_sa2": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel2",
-        "asgs16_sa3": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel3",
-        "asgs16_sa4": "http://linked.data.gov.au/dataset/asgs2016/statisticalarealevel4",
-        "asgs16_meshblocks": "http://linked.data.gov.au/dataset/asgs2016/meshblocks",
-        "asgs16_states": "http://linked.data.gov.au/dataset/asgs2016/stateorterritory",
-        "geofabric2_1_1_ahgfcontractedcatchment": "http://linked.data.gov.au/dataset/geofabric/contractedcatchment",
-        "geofabric2_1_1_riverregion": "http://linked.data.gov.au/dataset/geofabric/riverregion",
-        "geofabric2_1_1_drainagedivision": "http://linked.data.gov.au/dataset/geofabric/drainagedivision"
-    }
+    DATASET_RESOURCE_BASE_URI_LOOKUP = DatasetMappings.DATASET_RESOURCE_BASE_URI_LOOKUP
     def __init__(self, request, uri, instance, geom_html_template, **kwargs):
         self.views = {
                        'geometryview': GeometryView,
@@ -45,6 +36,7 @@ class GeometryRenderer(Renderer):
         self.geom_html_template = geom_html_template
         self.uri = uri
         self.request= request
+        self.instance['feature'] = self._find_resource_uris()
 
     def _render_geometryview(self):
         self.headers['Profile'] = 'http://example.org/def/geometryview'
