@@ -1,4 +1,5 @@
 [![](https://images.microbadger.com/badges/version/csiroenvinf/geometry-data-service.svg)](https://microbadger.com/images/csiroenvinf/geometry-data-service "Get your own version badge on microbadger.com")
+ ![Docker Pulls](https://img.shields.io/docker/pulls/csiroenvinf/geometry-data-service)
 
 # Geometry data service
 
