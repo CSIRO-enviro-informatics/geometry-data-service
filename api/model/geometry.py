@@ -2,6 +2,7 @@ from flask import Response, render_template
 from pyldapi import Renderer, View
 from rdflib import Graph, URIRef, RDF, RDFS, XSD, OWL, Namespace, Literal, BNode
 from rdflib.namespace import NamespaceManager
+from rdflib.serializer import Serializer
 import _config as config
 import json
 from shapely.geometry import shape
@@ -9,7 +10,6 @@ from pprint import pprint
 import psycopg2
 import os
 from .mappings import DatasetMappings
-
 
 
 GeometryView = View("GeometryView", "A profile of geometry.", ['text/html', 'application/json', 'text/turtle', 'text/plain'],
@@ -21,13 +21,18 @@ CentroidView = View("CentroidView", "A profile of geometry's centroid.", ['text/
 SimplifiedGeomView = View("SimplifiedGeomView", "A profile of the geometry that has been simplified.", ['text/html', 'application/json', 'text/turtle', 'text/plain'],
                  'text/html', namespace="http://example.org/def/simplifiedgeomview")
 
+SchemaOrgView = View("SchemaOrg", "A schema.org profile of the geometry.", ['text/html', 'application/ld+json'],
+                 'text/html', namespace="http://example.org/def/schemaorg")
+
+
 class GeometryRenderer(Renderer):
     DATASET_RESOURCE_BASE_URI_LOOKUP = DatasetMappings.DATASET_RESOURCE_BASE_URI_LOOKUP
     def __init__(self, request, uri, instance, geom_html_template, **kwargs):
         self.views = {
                        'geometryview': GeometryView,
                        'centroid': CentroidView,
-                       'simplifiedgeom': SimplifiedGeomView 
+                       'simplifiedgeom': SimplifiedGeomView,
+                       'schemaorg': SchemaOrgView
                      }
         self.default_view_token = 'geometryview'
         super(GeometryRenderer, self).__init__(
@@ -81,6 +86,14 @@ class GeometryRenderer(Renderer):
         elif self.format == "text/turtle":
             return Response(self.export_rdf(self, rdf_mime='text/turtle'),
                             mimetype="text/turtle", status=200)
+    
+    def _render_schemaorgview(self):
+        self.headers['Profile'] = 'http://example.org/def/schemaorg'
+        if self.format == "application/ld+json":
+            return Response(self.export_schemaorg_jsonld(),
+                            mimetype="application/json", status=200)
+        elif self.format == "text/html":
+            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view), mimetype="text/html", status=200)
 
     def _render_alternates_view_html(self):
         return Response(
@@ -119,7 +132,54 @@ class GeometryRenderer(Renderer):
             g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
 
         return g.serialize(format=self._get_rdf_mimetype(rdf_mime), nsm=nsm)
+    
+    def export_schemaorg_jsonld(self):
+       
+        g = Graph()
+        s  = URIRef(self.uri)
+        GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
+        SF = Namespace("http://www.opengis.net/ont/sf#")  
+        GEOX = Namespace("http://linked.data.gov.au/def/geox#")
+        nsm = NamespaceManager(g)
+        nsm.bind('geo', 'http://www.opengis.net/ont/geosparql#')
+        nsm.bind('sf', 'http://www.opengis.net/ont/sf#')
+        nsm.bind('geox', 'http://linked.data.gov.au/def/geox#')
 
+        g.add((s, RDF.type, GEO.Geometry))     
+
+        list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
+        if self.instance['type'] in list_of_geometry_types:
+            g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
+            resource_uri = self._find_resource_uris()
+            if resource_uri is not None:
+                g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
+            wkt = self._geojson_to_wkt()
+            g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
+
+        #use elfie/selfie context
+        context = [
+            "https://opengeospatial.github.io/ELFIE/json-ld/elf.jsonld",
+            "https://opengeospatial.github.io/ELFIE/json-ld/elf-network.jsonld"
+        ]
+        #context = {
+        #    "schema": "http://schema.org/",
+        #    "skos": "https://www.w3.org/TR/skos-reference/",
+        #    "gsp": "http://www.opengis.net/ont/geosparql#",
+        #    "description": "schema:description",
+        #    "geo": "schema:geo",
+        #    "hasGeometry": "gsp:hasGeometry",
+        #    "asWKT": "gsp:asWKT",
+        #    "image": {
+        #    "@id": "schema:image",
+        #    "@type": "@id"
+        #    },
+        #    "name": "schema:name",
+        #    "sameAs": "schema:sameAs",
+        #    "related": "skos:related"
+        #    }
+        return g.serialize(format='json-ld', context=context, auto_compact=True)
+
+        return g.serialize(format=self._get_rdf_mimetype(rdf_mime), nsm=nsm)
     def _find_resource_uris(self):
         dataset = self.instance["dataset"]
         id = self.instance["id"]
@@ -213,6 +273,8 @@ class GeometryRenderer(Renderer):
             response = self._render_simplifiedgeomview()
         elif not response and self.view == 'centroid':
             response = self._render_centroidview()
+        elif not response and self.view == 'schemaorg':
+            response = self._render_schemaorgview()
         elif self.view == 'alternates':
             response = self._render_alternates_view_html()
         else:
