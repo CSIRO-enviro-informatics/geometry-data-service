@@ -3,9 +3,10 @@ import _config as conf
 import pyldapi
 from flask import Flask
 from controller import pages, classes
-
+from flask_cors import CORS
 
 app = Flask(__name__, template_folder=conf.TEMPLATES_DIR, static_folder=conf.STATIC_DIR)
+CORS(app)
 
 app.register_blueprint(pages.pages)
 app.register_blueprint(classes.classes)

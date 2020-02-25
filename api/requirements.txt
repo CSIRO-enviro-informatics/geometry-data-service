@@ -8,3 +8,4 @@ pytest
 shapely
 geojson
 psycopg2
+flask-cors
