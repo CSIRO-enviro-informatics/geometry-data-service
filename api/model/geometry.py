@@ -114,7 +114,7 @@ class GeometryRenderer(Renderer):
         return g.serialize(format=self._get_rdf_mimetype(rdf_mime), nsm=nsm)
     
     def export_schemaorg_jsonld(self):
-        (g,nsm) = self.get_graph()
+        (g,nsm) = self.get_so_graph(include_geom=False)
         #use elfie/selfie context
         context = [
             "https://opengeospatial.github.io/ELFIE/json-ld/elf.jsonld",
@@ -145,7 +145,7 @@ class GeometryRenderer(Renderer):
             res = g.serialize(format='json-ld', context=fallback_context, auto_compact=True)
         return res
 
-    def get_graph(self):
+    def get_graph(self, include_geom=True):
         g = Graph()
         s  = URIRef(self.uri)
         GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
@@ -164,10 +164,36 @@ class GeometryRenderer(Renderer):
             resource_uri = self._find_resource_uris()
             if resource_uri is not None:
                 g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
-            wkt = self._geojson_to_wkt()
-            g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
+            if include_geom:
+                wkt = self._geojson_to_wkt()
+                g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
         return (g, nsm)
 
+    def get_so_graph(self, include_geom=True):
+        g = Graph()
+        s  = URIRef(self.uri)
+        GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
+        SF = Namespace("http://www.opengis.net/ont/sf#")  
+        GEOX = Namespace("http://linked.data.gov.au/def/geox#")
+        SCHEMA = Namespace("http://schema.org/")
+        nsm = NamespaceManager(g)
+        nsm.bind('geo', 'http://www.opengis.net/ont/geosparql#')
+        nsm.bind('sf', 'http://www.opengis.net/ont/sf#')
+        nsm.bind('geox', 'http://linked.data.gov.au/def/geox#')
+
+        g.add((s, RDF.type, GEO.Geometry))     
+
+        list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
+        if self.instance['type'] in list_of_geometry_types:
+            g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
+            resource_uri = self._find_resource_uris()
+            if resource_uri is not None:
+                g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
+                g.add((s, SCHEMA.subjectOf, URIRef(resource_uri)))
+            if include_geom:
+                wkt = self._geojson_to_wkt()
+                g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
+        return (g, nsm)
     def _find_resource_uris(self):
         dataset = self.instance["dataset"]
         id = self.instance["id"]

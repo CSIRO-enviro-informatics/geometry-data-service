@@ -14,7 +14,9 @@
    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
      integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
      crossorigin=""></script>
-
+   <script type="application/ld+json"> 
+    {{ include_raw(uri+"?_view=schemaorg&_format=application/ld+json") }}
+   </script>
     <style>
         #mapid { height: 400px; }
     </style>
