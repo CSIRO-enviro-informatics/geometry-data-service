@@ -109,77 +109,65 @@ class GeometryRenderer(Renderer):
         )
 
 
-    def export_rdf(self, model_view='geometryview', rdf_mime='text/turtle'):
-        g = Graph()
-        s  = URIRef(self.uri)
-        GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
-        SF = Namespace("http://www.opengis.net/ont/sf#")  
-        GEOX = Namespace("http://linked.data.gov.au/def/geox#")
-        nsm = NamespaceManager(g)
-        nsm.bind('geo', 'http://www.opengis.net/ont/geosparql#')
-        nsm.bind('sf', 'http://www.opengis.net/ont/sf#')
-        nsm.bind('geox', 'http://linked.data.gov.au/def/geox#')
-
-        g.add((s, RDF.type, GEO.Geometry))     
-
-        list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
-        if self.instance['type'] in list_of_geometry_types:
-            g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
-            resource_uri = self._find_resource_uris()
-            if resource_uri is not None:
-                g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
-            wkt = self._geojson_to_wkt()
-            g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
-
+    def export_rdf(self, rdf_mime='text/turtle'):
+        (g,nsm) = self.get_graph()
         return g.serialize(format=self._get_rdf_mimetype(rdf_mime), nsm=nsm)
     
     def export_schemaorg_jsonld(self):
-       
-        g = Graph()
-        s  = URIRef(self.uri)
-        GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
-        SF = Namespace("http://www.opengis.net/ont/sf#")  
-        GEOX = Namespace("http://linked.data.gov.au/def/geox#")
-        nsm = NamespaceManager(g)
-        nsm.bind('geo', 'http://www.opengis.net/ont/geosparql#')
-        nsm.bind('sf', 'http://www.opengis.net/ont/sf#')
-        nsm.bind('geox', 'http://linked.data.gov.au/def/geox#')
-
-        g.add((s, RDF.type, GEO.Geometry))     
-
-        list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
-        if self.instance['type'] in list_of_geometry_types:
-            g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
-            resource_uri = self._find_resource_uris()
-            if resource_uri is not None:
-                g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
-            wkt = self._geojson_to_wkt()
-            g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
-
+        (g,nsm) = self.get_graph()
         #use elfie/selfie context
         context = [
             "https://opengeospatial.github.io/ELFIE/json-ld/elf.jsonld",
             "https://opengeospatial.github.io/ELFIE/json-ld/elf-network.jsonld"
         ]
-        #context = {
-        #    "schema": "http://schema.org/",
-        #    "skos": "https://www.w3.org/TR/skos-reference/",
-        #    "gsp": "http://www.opengis.net/ont/geosparql#",
-        #    "description": "schema:description",
-        #    "geo": "schema:geo",
-        #    "hasGeometry": "gsp:hasGeometry",
-        #    "asWKT": "gsp:asWKT",
-        #    "image": {
-        #    "@id": "schema:image",
-        #    "@type": "@id"
-        #    },
-        #    "name": "schema:name",
-        #    "sameAs": "schema:sameAs",
-        #    "related": "skos:related"
-        #    }
-        return g.serialize(format='json-ld', context=context, auto_compact=True)
+        fallback_context = {
+            "schema": "http://schema.org/",
+            "skos": "https://www.w3.org/TR/skos-reference/",
+            "gsp": "http://www.opengis.net/ont/geosparql#",
+            "description": "schema:description",
+            "geo": "schema:geo",
+            "hasGeometry": "gsp:hasGeometry",
+            "asWKT": "gsp:asWKT",
+            "image": {
+            "@id": "schema:image",
+            "@type": "@id"
+            },
+            "name": "schema:name",
+            "sameAs": "schema:sameAs",
+            "related": "skos:related"
+        }
+        res = None
+        from urllib.error import HTTPError
+        try:
+            res = g.serialize(format='json-ld', context=context, auto_compact=True)
+        except HTTPError as he:
+            #use fallback context instead
+            res = g.serialize(format='json-ld', context=fallback_context, auto_compact=True)
+        return res
 
-        return g.serialize(format=self._get_rdf_mimetype(rdf_mime), nsm=nsm)
+    def get_graph(self):
+        g = Graph()
+        s  = URIRef(self.uri)
+        GEO = Namespace("http://www.opengis.net/ont/geosparql#")  
+        SF = Namespace("http://www.opengis.net/ont/sf#")  
+        GEOX = Namespace("http://linked.data.gov.au/def/geox#")
+        nsm = NamespaceManager(g)
+        nsm.bind('geo', 'http://www.opengis.net/ont/geosparql#')
+        nsm.bind('sf', 'http://www.opengis.net/ont/sf#')
+        nsm.bind('geox', 'http://linked.data.gov.au/def/geox#')
+
+        g.add((s, RDF.type, GEO.Geometry))     
+
+        list_of_geometry_types = ("Point", "Polygon", "LineString", "MultiPoint", "MultiLineString", "MultiPolygon")
+        if self.instance['type'] in list_of_geometry_types:
+            g.add((s, RDF.type, URIRef("http://www.opengis.net/ont/sf#{geomType}".format(geomType=self.instance['type'])) )) 
+            resource_uri = self._find_resource_uris()
+            if resource_uri is not None:
+                g.add((s, GEOX.isGeometryOf, URIRef(resource_uri)))
+            wkt = self._geojson_to_wkt()
+            g.add( (s, GEO.asWKT, Literal(wkt , datatype=GEO.wktLiteral) ))
+        return (g, nsm)
+
     def _find_resource_uris(self):
         dataset = self.instance["dataset"]
         id = self.instance["id"]
