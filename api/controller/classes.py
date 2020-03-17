@@ -135,12 +135,15 @@ def fetch_geom_count_from_db():
    username = os.environ['GSDB_USER']
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    query = 'select geom_total_count from combined_geom_count;'
    try:
       cur.execute(query)
    except Exception as e:
         print(e)
+        cur.close()
+        conn.close()
         return None
    res = cur.fetchone()
    count = res[0]
@@ -160,6 +163,8 @@ def fetch_geom_from_db(dataset, geom_id):
    username = os.environ['GSDB_USER']
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn.set_session(readonly=True, autocommit=True)
+
    cur = conn.cursor()
    query = 'SELECT id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) FROM combined_geoms WHERE id = %s AND dataset=%s;'
    backup_query = 'SELECT id, dataset, ST_AsGeoJSON(geom) FROM combined_geoms WHERE id = %s and dataset=%s;'
@@ -192,6 +197,7 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    username = os.environ['GSDB_USER']
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    query_list = []
    #query 1: no dataset specified so query all
@@ -280,6 +286,7 @@ def fetch_geom_items_from_db(page_current, records_per_page):
    username = os.environ['GSDB_USER']
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    offset = (page_current - 1) * records_per_page
    s = ""
@@ -349,6 +356,7 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
    username = os.environ['GSDB_USER']
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    offset = (page_current - 1) * records_per_page
    s = ""
@@ -376,6 +384,7 @@ def fetch_dataset_count_from_db():
    username = os.environ['GSDB_USER']
    passwd = os.environ['GSDB_PASS']
    conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    query = 'SELECT count(DISTINCT dataset) FROM combined_geoms;'
    try:
