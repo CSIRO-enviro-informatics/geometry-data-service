@@ -13,6 +13,7 @@ from model.pet import PetRenderer
 from model.search_results import SearchResultsRenderer
 from model.mappings import DatasetMappings 
 import psycopg2
+from psycopg2 import pool
 import json
 import os
 
@@ -34,6 +35,32 @@ dogs = [
         "color": "black",
     }
 ]
+
+dbpool = None
+try:
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   max_connections_in_pool = 25
+   if 'GSDB_CLIENT_MAX_CONN_POOL' in os.environ:
+     max_connections_in_pool = os.environ['GSDB_CLIENT_MAX_CONN_POOL']
+   dbpool = psycopg2.pool.SimpleConnectionPool(1, max_connections_in_pool,
+                   user = username,
+                   password = passwd,
+                   host = db_host,
+                   port = db_port,
+                   database = db_name
+                   )
+   if(dbpool):
+      print("Connection pool created successfully with {} max conns in pool".format(max_connections_in_pool) )
+except (Exception, psycopg2.DatabaseError) as error :
+    print ("Error while connecting to PostgreSQL", error)
+    if (dbpool):
+        dbpool.closeall
+        print("PostgreSQL connection pool is closed")
+
 
 
 @classes.route('/pet/dog/<string:dog_id>')
@@ -129,12 +156,7 @@ def geom_instance(dataset, geom_id):
 def fetch_geom_count_from_db():
    """
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn = dbpool.getconn()
    conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    query = 'select geom_total_count from combined_geom_count;'
@@ -143,12 +165,12 @@ def fetch_geom_count_from_db():
    except Exception as e:
         print(e)
         cur.close()
-        conn.close()
+        dbpool.putconn(conn, close=True)
         return None
    res = cur.fetchone()
    count = res[0]
    cur.close()
-   conn.close()
+   dbpool.putconn(conn, close=True)
    return count
 
 def fetch_geom_from_db(dataset, geom_id):
@@ -157,12 +179,7 @@ def fetch_geom_from_db(dataset, geom_id):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn = dbpool.getconn()
    conn.set_session(readonly=True, autocommit=True)
 
    cur = conn.cursor()
@@ -176,7 +193,7 @@ def fetch_geom_from_db(dataset, geom_id):
         cur.execute(backup_query, (str(geom_id), str(dataset)))
    (id,dataset,geojson) = cur.fetchone()
    cur.close()
-   conn.close()
+   dbpool.putconn(conn, close=True)
    o = json.loads(geojson)
    return o
 
@@ -191,12 +208,7 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    if latlng is None or not("," in latlng):
      return { 'count': -1, 'res': None, 'errcode': 1}
    arrData = latlng.split(',')
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn = dbpool.getconn()
    conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    query_list = []
@@ -211,7 +223,7 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
            print(e)
            conn.rollback()
            cur.close()
-           conn.close()
+           dbpool.putconn(conn,close=True)
            return { 'count': -1, 'res': [], 'errcode': 2}
    else:
       try:
@@ -220,12 +232,12 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
            print(e)
            conn.rollback()
            cur.close()
-           conn.close()
+           dbpool.putconn(conn, close=True)
            return { 'count': -1, 'res': [], 'errcode': 3, 'x': str(arrData[0]), 'y': str(arrData[1])}
       
    results = cur.fetchall()
    cur.close()
-   conn.close()
+   dbpool.putconn(conn, close=True)
    if results == None:
      return { 'count': -1, 'res': []}
    #print(results)
@@ -280,12 +292,7 @@ def fetch_geom_items_from_db(page_current, records_per_page):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn = dbpool.getconn()
    conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    offset = (page_current - 1) * records_per_page
@@ -302,7 +309,7 @@ def fetch_geom_items_from_db(page_current, records_per_page):
       (id,dataset) = record
       results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
    cur.close()
-   conn.close()
+   dbpool.putconn(conn, close=True)
    return results
 
 @classes.route('/dataset/')
@@ -350,12 +357,7 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the datasets.
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn = dbpool.getconn()
    conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    offset = (page_current - 1) * records_per_page
@@ -372,18 +374,13 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
       (dataset) = record
       results.append((dataset[0], dataset[0]))
    cur.close()
-   conn.close()
+   dbpool.putconn(conn, close=True)
    return results
 
 def fetch_dataset_count_from_db():
    """
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
+   conn = dbpool.getconn()
    conn.set_session(readonly=True, autocommit=True)
    cur = conn.cursor()
    query = 'SELECT count(DISTINCT dataset) FROM combined_geoms;'
@@ -395,5 +392,5 @@ def fetch_dataset_count_from_db():
    res = cur.fetchone()
    count = res[0]
    cur.close()
-   conn.close()
+   dbpool.putconn(conn, close=True)
    return count
