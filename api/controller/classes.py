@@ -165,12 +165,14 @@ def fetch_geom_count_from_db():
    except Exception as e:
         print(e)
         cur.close()
-        dbpool.putconn(conn, close=True)
+        conn.commit()
+        dbpool.putconn(conn)
         return None
    res = cur.fetchone()
    count = res[0]
    cur.close()
-   dbpool.putconn(conn, close=True)
+   conn.commit()
+   dbpool.putconn(conn)
    return count
 
 def fetch_geom_from_db(dataset, geom_id):
@@ -193,7 +195,8 @@ def fetch_geom_from_db(dataset, geom_id):
         cur.execute(backup_query, (str(geom_id), str(dataset)))
    (id,dataset,geojson) = cur.fetchone()
    cur.close()
-   dbpool.putconn(conn, close=True)
+   conn.commit()
+   dbpool.putconn(conn)
    o = json.loads(geojson)
    return o
 
@@ -223,7 +226,8 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
            print(e)
            conn.rollback()
            cur.close()
-           dbpool.putconn(conn,close=True)
+           conn.commit()
+           dbpool.putconn(conn)
            return { 'count': -1, 'res': [], 'errcode': 2}
    else:
       try:
@@ -232,12 +236,14 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
            print(e)
            conn.rollback()
            cur.close()
-           dbpool.putconn(conn, close=True)
+           conn.commit()
+           dbpool.putconn(conn)
            return { 'count': -1, 'res': [], 'errcode': 3, 'x': str(arrData[0]), 'y': str(arrData[1])}
       
    results = cur.fetchall()
    cur.close()
-   dbpool.putconn(conn, close=True)
+   conn.commit()
+   dbpool.putconn(conn)
    if results == None:
      return { 'count': -1, 'res': []}
    #print(results)
@@ -309,7 +315,8 @@ def fetch_geom_items_from_db(page_current, records_per_page):
       (id,dataset) = record
       results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
    cur.close()
-   dbpool.putconn(conn, close=True)
+   conn.commit()
+   dbpool.putconn(conn)
    return results
 
 @classes.route('/dataset/')
@@ -374,7 +381,8 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
       (dataset) = record
       results.append((dataset[0], dataset[0]))
    cur.close()
-   dbpool.putconn(conn, close=True)
+   conn.commit()
+   dbpool.putconn(conn)
    return results
 
 def fetch_dataset_count_from_db():
@@ -392,5 +400,6 @@ def fetch_dataset_count_from_db():
    res = cur.fetchone()
    count = res[0]
    cur.close()
-   dbpool.putconn(conn, close=True)
+   conn.commit()
+   dbpool.putconn(conn)
    return count
