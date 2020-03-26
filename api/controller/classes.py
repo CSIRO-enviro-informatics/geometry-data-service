@@ -156,23 +156,23 @@ def geom_instance(dataset, geom_id):
 def fetch_geom_count_from_db():
    """
    """
-   conn = dbpool.getconn()
-   conn.set_session(readonly=True, autocommit=True)
-   cur = conn.cursor()
-   query = 'select geom_total_count from combined_geom_count;'
+   count = None
    try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      query = 'select geom_total_count from combined_geom_count;'
       cur.execute(query)
+      res = cur.fetchone()
+      count = res[0]
+      cur.close()
+      conn.commit()
    except Exception as e:
-        print(e)
-        cur.close()
-        conn.commit()
-        dbpool.putconn(conn)
-        return None
-   res = cur.fetchone()
-   count = res[0]
-   cur.close()
-   conn.commit()
-   dbpool.putconn(conn)
+      print(e)
+      cur.close()
+      conn.commit()
+   finally:
+      dbpool.putconn(conn)
    return count
 
 def fetch_geom_from_db(dataset, geom_id):
@@ -181,23 +181,28 @@ def fetch_geom_from_db(dataset, geom_id):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
-   conn = dbpool.getconn()
-   conn.set_session(readonly=True, autocommit=True)
-
-   cur = conn.cursor()
    query = 'SELECT id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) FROM combined_geoms WHERE id = %s AND dataset=%s;'
    backup_query = 'SELECT id, dataset, ST_AsGeoJSON(geom) FROM combined_geoms WHERE id = %s and dataset=%s;'
+   o = None
    try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
       cur.execute(query, (geom_id, dataset))
+      (id,dataset,geojson) = cur.fetchone()
+      cur.close()
+      conn.commit()
+      o = json.loads(geojson)
    except Exception as e:
         print(e)
         conn.rollback()
         cur.execute(backup_query, (str(geom_id), str(dataset)))
-   (id,dataset,geojson) = cur.fetchone()
-   cur.close()
-   conn.commit()
-   dbpool.putconn(conn)
-   o = json.loads(geojson)
+        (id,dataset,geojson) = cur.fetchone()
+        cur.close()
+        conn.commit()
+        o = json.loads(geojson)
+   finally:
+      dbpool.putconn(conn)
    return o
 
 
@@ -211,50 +216,44 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    if latlng is None or not("," in latlng):
      return { 'count': -1, 'res': None, 'errcode': 1}
    arrData = latlng.split(',')
-   conn = dbpool.getconn()
-   conn.set_session(readonly=True, autocommit=True)
-   cur = conn.cursor()
    query_list = []
    #query 1: no dataset specified so query all
    query_list.append('SELECT id, dataset FROM combined_geoms WHERE ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
    #query 2: dataset _is_ specified so query by dataset
    query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = %s and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
-   if dataset is None: 
-      try:
-         cur.execute(query_list[0], (str(arrData[0]), str(arrData[1]), str(crs)))
-      except Exception as e:
-           print(e)
-           conn.rollback()
-           cur.close()
-           conn.commit()
-           dbpool.putconn(conn)
-           return { 'count': -1, 'res': [], 'errcode': 2}
-   else:
-      try:
-         cur.execute(query_list[1], (str(dataset), str(arrData[0]), str(arrData[1]), str(crs)))
-      except Exception as e:
-           print(e)
-           conn.rollback()
-           cur.close()
-           conn.commit()
-           dbpool.putconn(conn)
-           return { 'count': -1, 'res': [], 'errcode': 3, 'x': str(arrData[0]), 'y': str(arrData[1])}
-      
-   results = cur.fetchall()
-   cur.close()
-   conn.commit()
-   dbpool.putconn(conn)
-   if results == None:
-     return { 'count': -1, 'res': []}
-   #print(results)
    fmt_results = []
-   for r in results:
-      r_obj = {}
-      r_obj['id'] = r[0]
-      r_obj['dataset'] = r[1]
-      r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
-      r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
-      fmt_results.append(r_obj)
+   r_obj = {}
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      if dataset is None: 
+         cur.execute(query_list[0], (str(arrData[0]), str(arrData[1]), str(crs)))
+      else:
+         cur.execute(query_list[1], (str(dataset), str(arrData[0]), str(arrData[1]), str(crs)))
+      
+      results = cur.fetchall()
+      cur.close()
+      conn.commit()
+      if results == None:
+         r_obj = { 'count': -1, 'res': []}
+      else:
+         for r in results:
+            r_obj = {}
+            r_obj['id'] = r[0]
+            r_obj['dataset'] = r[1]
+            r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
+            r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
+            fmt_results.append(r_obj)
+         r_obj = { 'count': len(fmt_results), 'res': fmt_results }
+   except Exception as e:
+      print(e)
+      conn.rollback()
+      cur.close()
+      conn.commit()
+      r_obj = { 'count': -1, 'res': [], 'errcode': 2}
+   finally:
+      dbpool.putconn(conn)
    return { 'count': len(fmt_results), 'res': fmt_results }
 
 
@@ -298,25 +297,30 @@ def fetch_geom_items_from_db(page_current, records_per_page):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
-   conn = dbpool.getconn()
-   conn.set_session(readonly=True, autocommit=True)
-   cur = conn.cursor()
-   offset = (page_current - 1) * records_per_page
-   s = ""
-   s += " SELECT id, dataset"
-   s += " FROM combined_geoms"
-   s += " ORDER BY dataset,id"
-   s += " LIMIT " + str(records_per_page)
-   s += " OFFSET " + str(offset)
    results = []
-   cur.execute(s)
-   record_list = cur.fetchall()
-   for record in record_list:
-      (id,dataset) = record
-      results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
-   cur.close()
-   conn.commit()
-   dbpool.putconn(conn)
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      offset = (page_current - 1) * records_per_page
+      s = ""
+      s += " SELECT id, dataset"
+      s += " FROM combined_geoms"
+      s += " ORDER BY dataset,id"
+      s += " LIMIT " + str(records_per_page)
+      s += " OFFSET " + str(offset)
+      results = []
+      cur.execute(s)
+      record_list = cur.fetchall()
+      for record in record_list:
+         (id,dataset) = record
+         results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
+      cur.close()
+      conn.commit()
+   except Exception as e:
+       print(e)
+   finally:
+      dbpool.putconn(conn)
    return results
 
 @classes.route('/dataset/')
@@ -364,42 +368,51 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the datasets.
    """
-   conn = dbpool.getconn()
-   conn.set_session(readonly=True, autocommit=True)
-   cur = conn.cursor()
-   offset = (page_current - 1) * records_per_page
-   s = ""
-   s += " SELECT DISTINCT dataset"
-   s += " FROM combined_geoms"
-   s += " ORDER BY dataset"
-   s += " LIMIT " + str(records_per_page)
-   s += " OFFSET " + str(offset)
    results = []
-   cur.execute(s)
-   record_list = cur.fetchall()
-   for record in record_list:
-      (dataset) = record
-      results.append((dataset[0], dataset[0]))
-   cur.close()
-   conn.commit()
-   dbpool.putconn(conn)
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      offset = (page_current - 1) * records_per_page
+      s = ""
+      s += " SELECT DISTINCT dataset"
+      s += " FROM combined_geoms"
+      s += " ORDER BY dataset"
+      s += " LIMIT " + str(records_per_page)
+      s += " OFFSET " + str(offset)
+      cur.execute(s)
+      record_list = cur.fetchall()
+      for record in record_list:
+         (dataset) = record
+         results.append((dataset[0], dataset[0]))
+      cur.close()
+      conn.commit()
+   except Exception as e:
+       print(e)
+   finally:
+      dbpool.putconn(conn)
    return results
 
 def fetch_dataset_count_from_db():
    """
    """
-   conn = dbpool.getconn()
-   conn.set_session(readonly=True, autocommit=True)
-   cur = conn.cursor()
-   query = 'SELECT count(DISTINCT dataset) FROM combined_geoms;'
+   count = -1
    try:
-      cur.execute(query)
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      query = 'SELECT count(DISTINCT dataset) FROM combined_geoms;'
+      try:
+         cur.execute(query)
+      except Exception as e:
+           print(e)
+           return None
+      res = cur.fetchone()
+      count = res[0]
+      cur.close()
+      conn.commit()
    except Exception as e:
-        print(e)
-        return None
-   res = cur.fetchone()
-   count = res[0]
-   cur.close()
-   conn.commit()
-   dbpool.putconn(conn)
+       print(e)
+   finally:
+      dbpool.putconn(conn)
    return count
