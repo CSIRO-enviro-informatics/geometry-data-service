@@ -5,6 +5,7 @@ from flask import Flask
 from controller import pages, classes
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
+from jinja2 import Markup
 
 app = Flask(__name__, template_folder=conf.TEMPLATES_DIR, static_folder=conf.STATIC_DIR)
 CORS(app)
@@ -25,7 +26,21 @@ SWAGGERUI_BLUEPRINT = get_swaggerui_blueprint(
 app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
 ### end swagger specific ###
 
-
+@app.context_processor
+def utility_processor():
+    def include_raw(url):
+        import urllib.request
+        import json
+        res = urllib.request.urlopen(url)
+        res_body = res.read()
+        jo = json.loads(res_body.decode("utf-8"))
+        j = json.dumps(jo, indent=4)
+        #return u'{}'.format(url)
+        #return j
+        return Markup(j)
+        
+    return dict(include_raw=include_raw)
+    
 # run the Flask app
 if __name__ == '__main__':
     logging.basicConfig(filename=conf.LOGFILE,
