@@ -8,10 +8,12 @@ import requests
 from io import BytesIO
 from lxml import etree
 from model.geometry import GeometryRenderer
+from model.dataset import DatasetRenderer
 from model.pet import PetRenderer
 from model.search_results import SearchResultsRenderer
 from model.mappings import DatasetMappings 
 import psycopg2
+from psycopg2 import pool
 import json
 import os
 
@@ -33,6 +35,32 @@ dogs = [
         "color": "black",
     }
 ]
+
+dbpool = None
+try:
+   db_name = os.environ['GSDB_DBNAME']
+   db_host = os.environ['GSDB_HOSTNAME']
+   db_port = os.environ['GSDB_PORT']
+   username = os.environ['GSDB_USER']
+   passwd = os.environ['GSDB_PASS']
+   max_connections_in_pool = 25
+   if 'GSDB_CLIENT_MAX_CONN_POOL' in os.environ:
+     max_connections_in_pool = os.environ['GSDB_CLIENT_MAX_CONN_POOL']
+   dbpool = psycopg2.pool.SimpleConnectionPool(1, max_connections_in_pool,
+                   user = username,
+                   password = passwd,
+                   host = db_host,
+                   port = db_port,
+                   database = db_name
+                   )
+   if(dbpool):
+      print("Connection pool created successfully with {} max conns in pool".format(max_connections_in_pool) )
+except (Exception, psycopg2.DatabaseError) as error :
+    print ("Error while connecting to PostgreSQL", error)
+    if (dbpool):
+        dbpool.closeall
+        print("PostgreSQL connection pool is closed")
+
 
 
 @classes.route('/pet/dog/<string:dog_id>')
@@ -128,23 +156,23 @@ def geom_instance(dataset, geom_id):
 def fetch_geom_count_from_db():
    """
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
-   cur = conn.cursor()
-   query = 'select geom_total_count from combined_geom_count;'
+   count = None
    try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      query = 'select geom_total_count from combined_geom_count;'
       cur.execute(query)
+      res = cur.fetchone()
+      count = res[0]
+      cur.close()
+      conn.commit()
    except Exception as e:
-        print(e)
-        return None
-   res = cur.fetchone()
-   count = res[0]
-   cur.close()
-   conn.close()
+      print(e)
+      cur.close()
+      conn.commit()
+   finally:
+      dbpool.putconn(conn)
    return count
 
 def fetch_geom_from_db(dataset, geom_id):
@@ -153,25 +181,28 @@ def fetch_geom_from_db(dataset, geom_id):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
-   cur = conn.cursor()
    query = 'SELECT id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) FROM combined_geoms WHERE id = %s AND dataset=%s;'
    backup_query = 'SELECT id, dataset, ST_AsGeoJSON(geom) FROM combined_geoms WHERE id = %s and dataset=%s;'
+   o = None
    try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
       cur.execute(query, (geom_id, dataset))
+      (id,dataset,geojson) = cur.fetchone()
+      cur.close()
+      conn.commit()
+      o = json.loads(geojson)
    except Exception as e:
         print(e)
         conn.rollback()
         cur.execute(backup_query, (str(geom_id), str(dataset)))
-   (id,dataset,geojson) = cur.fetchone()
-   cur.close()
-   conn.close()
-   o = json.loads(geojson)
+        (id,dataset,geojson) = cur.fetchone()
+        cur.close()
+        conn.commit()
+        o = json.loads(geojson)
+   finally:
+      dbpool.putconn(conn)
    return o
 
 
@@ -185,51 +216,44 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    if latlng is None or not("," in latlng):
      return { 'count': -1, 'res': None, 'errcode': 1}
    arrData = latlng.split(',')
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
-   cur = conn.cursor()
    query_list = []
    #query 1: no dataset specified so query all
    query_list.append('SELECT id, dataset FROM combined_geoms WHERE ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
    #query 2: dataset _is_ specified so query by dataset
    query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = %s and ST_Intersects( ST_Transform(ST_SetSRID(ST_Point(%s, %s), %s),3577) , geom);')
-   if dataset is None: 
-      try:
-         cur.execute(query_list[0], (str(arrData[0]), str(arrData[1]), str(crs)))
-      except Exception as e:
-           print(e)
-           conn.rollback()
-           cur.close()
-           conn.close()
-           return { 'count': -1, 'res': [], 'errcode': 2}
-   else:
-      try:
-         cur.execute(query_list[1], (str(dataset), str(arrData[0]), str(arrData[1]), str(crs)))
-      except Exception as e:
-           print(e)
-           conn.rollback()
-           cur.close()
-           conn.close()
-           return { 'count': -1, 'res': [], 'errcode': 3, 'x': str(arrData[0]), 'y': str(arrData[1])}
-      
-   results = cur.fetchall()
-   cur.close()
-   conn.close()
-   if results == None:
-     return { 'count': -1, 'res': []}
-   #print(results)
    fmt_results = []
-   for r in results:
-      r_obj = {}
-      r_obj['id'] = r[0]
-      r_obj['dataset'] = r[1]
-      r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
-      r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
-      fmt_results.append(r_obj)
+   r_obj = {}
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      if dataset is None: 
+         cur.execute(query_list[0], (str(arrData[0]), str(arrData[1]), str(crs)))
+      else:
+         cur.execute(query_list[1], (str(dataset), str(arrData[0]), str(arrData[1]), str(crs)))
+      
+      results = cur.fetchall()
+      cur.close()
+      conn.commit()
+      if results == None:
+         r_obj = { 'count': -1, 'res': []}
+      else:
+         for r in results:
+            r_obj = {}
+            r_obj['id'] = r[0]
+            r_obj['dataset'] = r[1]
+            r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
+            r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
+            fmt_results.append(r_obj)
+         r_obj = { 'count': len(fmt_results), 'res': fmt_results }
+   except Exception as e:
+      print(e)
+      conn.rollback()
+      cur.close()
+      conn.commit()
+      r_obj = { 'count': -1, 'res': [], 'errcode': 2}
+   finally:
+      dbpool.putconn(conn)
    return { 'count': len(fmt_results), 'res': fmt_results }
 
 
@@ -240,18 +264,16 @@ def geometry_list():
     The Register of Geometries
     :return: HTTP Response
     """
-
     # get the total register count from the XML API
     try:
         page = request.values.get('page') if request.values.get('page') is not None else 1
         page = int(page)
         per_page = request.values.get('per_page') if request.values.get('per_page') is not None else 20
         per_page=int(per_page)
-        items = fetch_items_from_db(page, per_page)
+        items = fetch_geom_items_from_db(page, per_page)
     except Exception as e:
         print(e)
         return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
-
     no_of_items = fetch_geom_count_from_db()
     r = pyldapi.RegisterRenderer(
         request,
@@ -266,41 +288,131 @@ def geometry_list():
     if hasattr(r, 'vf_error'):
         pprint.pprint(r.vf_error)
         return Response('The Geometries Register view is offline due to HTTP headers not able to be handled:\n{}\n\nThis usually happens on a newer version of the Google Chrome browser.\nPlease try a different browser like Firefox or Chrome v78 or earlier.'.format(r.vf_error), mimetype='text/plain', status=500)
-
     return r.render()
 
 
-def fetch_items_from_db(page_current, records_per_page):
+def fetch_geom_items_from_db(page_current, records_per_page):
    """
    Assumes there is a Postgis database with connection config specified in system environment variables.
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
-   db_name = os.environ['GSDB_DBNAME']
-   db_host = os.environ['GSDB_HOSTNAME']
-   db_port = os.environ['GSDB_PORT']
-   username = os.environ['GSDB_USER']
-   passwd = os.environ['GSDB_PASS']
-   conn = psycopg2.connect(dbname=db_name, host=db_host, port=db_port, user=username, password=passwd)
-   cur = conn.cursor()
-   offset = (page_current - 1) * records_per_page
-
-   s = ""
-   s += " SELECT id, dataset"
-   s += " FROM combined_geoms"
-   s += " ORDER BY dataset,id"
-   s += " LIMIT " + str(records_per_page)
-   s += " OFFSET " + str(offset)
-
    results = []
-   cur.execute(s)
-   record_list = cur.fetchall()
-   for record in record_list:
-      (id,dataset) = record
-      results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
-
-   #print(s)
-   #print(len(results))
-   cur.close()
-   conn.close()
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      offset = (page_current - 1) * records_per_page
+      s = ""
+      s += " SELECT id, dataset"
+      s += " FROM combined_geoms"
+      s += " ORDER BY dataset,id"
+      s += " LIMIT " + str(records_per_page)
+      s += " OFFSET " + str(offset)
+      results = []
+      cur.execute(s)
+      record_list = cur.fetchall()
+      for record in record_list:
+         (id,dataset) = record
+         results.append((dataset+ "/"+str(id), dataset+"/"+str(id)))
+      cur.close()
+      conn.commit()
+   except Exception as e:
+       print(e)
+   finally:
+      dbpool.putconn(conn)
    return results
+
+@classes.route('/dataset/')
+def dataset_list():
+    """
+    The Register of Datasets
+    :return: HTTP Response
+    """
+    # get the total register count from the XML API
+    try:
+        page = request.values.get('page') if request.values.get('page') is not None else 1
+        page = int(page)
+        per_page = request.values.get('per_page') if request.values.get('per_page') is not None else 20
+        per_page=int(per_page)
+        items = fetch_dataset_items_from_db(page, per_page)
+    except Exception as e:
+        print(e)
+        return Response('The Datasets Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
+    no_of_items = fetch_dataset_count_from_db()
+    r = pyldapi.RegisterRenderer(
+        request,
+        request.url,
+        'Datasets Register',
+        'A register of Datasets',
+        items,
+        ["http://www.w3.org/ns/dcat#Dataset"],
+        no_of_items,
+        per_page=per_page
+    )
+    if hasattr(r, 'vf_error'):
+        pprint.pprint(r.vf_error)
+        return Response('The Datasets Register view is offline due to HTTP headers not able to be handled:\n{}\n\nThis usually happens on a newer version of the Google Chrome browser.\nPlease try a different browser like Firefox or Chrome v78 or earlier.'.format(r.vf_error), mimetype='text/plain', status=500)
+    return r.render()
+
+@classes.route('/dataset/<string:dataset_id>')
+def dataset_instance(dataset_id):
+    instance = None
+    instance = { "id": dataset_id }
+    renderer = DatasetRenderer(request, request.base_url, instance, 'page_dataset.html')
+    return renderer.render()
+
+def fetch_dataset_items_from_db(page_current, records_per_page):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for the datasets.
+   """
+   results = []
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      offset = (page_current - 1) * records_per_page
+      s = ""
+      s += " SELECT DISTINCT dataset"
+      s += " FROM combined_geoms"
+      s += " ORDER BY dataset"
+      s += " LIMIT " + str(records_per_page)
+      s += " OFFSET " + str(offset)
+      cur.execute(s)
+      record_list = cur.fetchall()
+      for record in record_list:
+         (dataset) = record
+         results.append((dataset[0], dataset[0]))
+      cur.close()
+      conn.commit()
+   except Exception as e:
+       print(e)
+   finally:
+      dbpool.putconn(conn)
+   return results
+
+def fetch_dataset_count_from_db():
+   """
+   """
+   count = -1
+   try:
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      query = 'SELECT count(DISTINCT dataset) FROM combined_geoms;'
+      try:
+         cur.execute(query)
+      except Exception as e:
+           print(e)
+           return None
+      res = cur.fetchone()
+      count = res[0]
+      cur.close()
+      conn.commit()
+   except Exception as e:
+       print(e)
+   finally:
+      dbpool.putconn(conn)
+   return count
