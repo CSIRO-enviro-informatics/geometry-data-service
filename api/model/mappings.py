@@ -20,7 +20,7 @@ class DatasetMappings():
         "asgs16_ced": "http://linked.data.gov.au/dataset/asgs2016/commonwealthelectoraldivision",
         "asgs16_ssc": "http://linked.data.gov.au/dataset/asgs2016/statesuburb",
         "asgs16_nrmr": "http://linked.data.gov.au/dataset/asgs2016/naturalresourcemanagementregion",
-        "geofabric2_1_1_ahgfcontractedcatchment": "http://linked.data.gov.au/dataset/geofabric/contractedcatchment",
+        "geofabric2_1_1_contractedcatchment": "http://linked.data.gov.au/dataset/geofabric/contractedcatchment",
         "geofabric2_1_1_riverregion": "http://linked.data.gov.au/dataset/geofabric/riverregion",
         "geofabric2_1_1_awradrainagedivision": "http://linked.data.gov.au/dataset/geofabric/drainagedivision"
     }
