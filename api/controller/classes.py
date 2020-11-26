@@ -36,8 +36,9 @@ dogs = [
     }
 ]
 
-dbpool = None
-try:
+
+def establish_dbpool() :
+   dbpool = None
    db_name = os.environ['GSDB_DBNAME']
    db_host = os.environ['GSDB_HOSTNAME']
    db_port = os.environ['GSDB_PORT']
@@ -46,21 +47,25 @@ try:
    max_connections_in_pool = 25
    if 'GSDB_CLIENT_MAX_CONN_POOL' in os.environ:
      max_connections_in_pool = os.environ['GSDB_CLIENT_MAX_CONN_POOL']
-   dbpool = psycopg2.pool.SimpleConnectionPool(1, max_connections_in_pool,
+   try:
+      dbpool = psycopg2.pool.SimpleConnectionPool(1, max_connections_in_pool,
                    user = username,
                    password = passwd,
                    host = db_host,
                    port = db_port,
                    database = db_name
                    )
-   if(dbpool):
-      print("Connection pool created successfully with {} max conns in pool".format(max_connections_in_pool) )
-except (Exception, psycopg2.DatabaseError) as error :
-    print ("Error while connecting to PostgreSQL", error)
-    if (dbpool):
-        dbpool.closeall
-        print("PostgreSQL connection pool is closed")
+      if(dbpool):
+         print("Connection pool created successfully with {} max conns in pool".format(max_connections_in_pool) )
+   except (Exception, psycopg2.DatabaseError) as error :
+      print ("Error while connecting to PostgreSQL", error)
+      if (dbpool):
+         dbpool.closeall
+         print("PostgreSQL connection pool is closed")                  
+   return dbpool
 
+dbpool = None
+dbpool = establish_dbpool() 
 
 
 @classes.route('/pet/dog/<string:dog_id>')
@@ -156,8 +161,11 @@ def geom_instance(dataset, geom_id):
 def fetch_geom_count_from_db():
    """
    """
+   global dbpool
    count = None
    try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
       conn = dbpool.getconn()
       conn.set_session(readonly=True, autocommit=True)
       cur = conn.cursor()
@@ -181,10 +189,13 @@ def fetch_geom_from_db(dataset, geom_id):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
+   global dbpool
    query = 'SELECT id, dataset, ST_AsGeoJSON(ST_Transform(geom,4326)) FROM combined_geoms WHERE id = %s AND dataset=%s;'
    backup_query = 'SELECT id, dataset, ST_AsGeoJSON(geom) FROM combined_geoms WHERE id = %s and dataset=%s;'
    o = None
    try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
       conn = dbpool.getconn()
       conn.set_session(readonly=True, autocommit=True)
       cur = conn.cursor()
@@ -213,6 +224,7 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    This function connects to the DB, and queries for matching geoms based on input latlng parameters.
    Default CRS is WGS84 (4326)
    """
+   global dbpool
    if latlng is None or not("," in latlng):
      return { 'count': -1, 'res': None, 'errcode': 1}
    arrData = latlng.split(',')
@@ -224,6 +236,8 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
    fmt_results = []
    r_obj = {}
    try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
       conn = dbpool.getconn()
       conn.set_session(readonly=True, autocommit=True)
       cur = conn.cursor()
@@ -297,8 +311,11 @@ def fetch_geom_items_from_db(page_current, records_per_page):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the geom as geojson based on input dataset and geom_id parameters.
    """
+   global dbpool
    results = []
    try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
       conn = dbpool.getconn()
       conn.set_session(readonly=True, autocommit=True)
       cur = conn.cursor()
@@ -368,8 +385,11 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
    This function connects to the DB, and queries for the datasets.
    """
+   global dbpool
    results = []
    try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
       conn = dbpool.getconn()
       conn.set_session(readonly=True, autocommit=True)
       cur = conn.cursor()
@@ -396,8 +416,11 @@ def fetch_dataset_items_from_db(page_current, records_per_page):
 def fetch_dataset_count_from_db():
    """
    """
+   global dbpool
    count = -1
    try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
       conn = dbpool.getconn()
       conn.set_session(readonly=True, autocommit=True)
       cur = conn.cursor()
