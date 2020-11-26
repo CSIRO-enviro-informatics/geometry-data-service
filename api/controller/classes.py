@@ -289,6 +289,8 @@ def geometry_list():
         print(e)
         return Response('The Geometries Register is offline:\n{}'.format(e), mimetype='text/plain', status=500)
     no_of_items = fetch_geom_count_from_db()
+    if no_of_items is None:
+       no_of_items = 0
     r = pyldapi.RegisterRenderer(
         request,
         request.url,
