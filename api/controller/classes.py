@@ -108,6 +108,21 @@ def search_by_latlng_and_dataset(latlng, dataset):
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
+@classes.route('/search/wkt', methods = ['POST'])
+def search_by_wkt():
+    crs = 4326
+    if 'crs' in request.args:
+       crs = request.args.get('crs','4326')
+    wkt = request.form.get('wkt')
+    list_results = find_geometry_by_wkt(wkt, crs=crs)
+    if list_results is None:
+        return Response("Not Found", status=404)   
+    renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
+    return renderer.render()
+
+#@classes.route('/search/wkt/dataset/<string:dataset>')
+#def search_by_wkt_and_dataset(dataset, methods = ['POST']):
+
 
 geom_list = [
     {
@@ -246,6 +261,57 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
       else:
          cur.execute(query_list[1], (str(dataset), str(arrData[0]), str(arrData[1]), str(crs)))
       
+      results = cur.fetchall()
+      cur.close()
+      conn.commit()
+      if results == None:
+         r_obj = { 'count': -1, 'res': []}
+      else:
+         for r in results:
+            r_obj = {}
+            r_obj['id'] = r[0]
+            r_obj['dataset'] = r[1]
+            r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
+            r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
+            fmt_results.append(r_obj)
+         r_obj = { 'count': len(fmt_results), 'res': fmt_results }
+   except Exception as e:
+      print(e)
+      conn.rollback()
+      cur.close()
+      conn.commit()
+      r_obj = { 'count': -1, 'res': [], 'errcode': 2}
+   finally:
+      dbpool.putconn(conn)
+   return { 'count': len(fmt_results), 'res': fmt_results }
+
+def find_geometry_by_wkt(wkt, dataset=None, crs='4326'):
+   """
+   Assumes there is a Postgis database with connection config specified in system environment variables.
+   Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
+   This function connects to the DB, and queries for matching geoms based on input wkt.
+   Default CRS is WGS84 (4326)
+   """
+   global dbpool
+   if wkt is None:
+     return { 'count': -1, 'res': None, 'errcode': 1}
+   query_list = []
+   #query 1: no dataset specified so query all
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE ST_Intersects( ST_Transform(ST_GeomFromText(%s, %s),3577) , geom);')
+   #query 2: dataset _is_ specified so query by dataset
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = %s and ST_Intersects( ST_Transform(ST_GeomFromText(%s, %s),3577) , geom);')
+   fmt_results = []
+   r_obj = {}
+   try:
+      if dbpool is None:
+         dbpool = establish_dbpool()
+      conn = dbpool.getconn()
+      conn.set_session(readonly=True, autocommit=True)
+      cur = conn.cursor()
+      if dataset is None: 
+         cur.execute(query_list[0], (str(wkt), str(crs)))
+      else:
+         cur.execute(query_list[1], (str(dataset), str(wkt), str(crs)))
       results = cur.fetchall()
       cur.close()
       conn.commit()
