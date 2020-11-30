@@ -114,14 +114,13 @@ def search_by_wkt():
     if 'crs' in request.args:
        crs = request.args.get('crs','4326')
     wkt = request.form.get('wkt')
-    list_results = find_geometry_by_wkt(wkt, crs=crs)
+    dataset = request.form.get('dataset')
+    list_results = find_geometry_by_wkt(wkt, crs=crs, dataset=dataset)
     if list_results is None:
         return Response("Not Found", status=404)   
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
-#@classes.route('/search/wkt/dataset/<string:dataset>')
-#def search_by_wkt_and_dataset(dataset, methods = ['POST']):
 
 
 geom_list = [
