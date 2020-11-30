@@ -115,7 +115,11 @@ def search_by_wkt():
        crs = request.args.get('crs','4326')
     wkt = request.form.get('wkt')
     dataset = request.form.get('dataset')
-    list_results = find_geometry_by_wkt(wkt, crs=crs, dataset=dataset)
+    operation = request.form.get('operation')
+    if operation is None:
+       list_results = find_geometry_by_wkt(wkt, crs=crs, dataset=dataset)
+    else:
+       list_results = find_geometry_by_wkt(wkt, crs=crs, dataset=dataset, operation=operation)
     if list_results is None:
         return Response("Not Found", status=404)   
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
@@ -284,7 +288,7 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
       dbpool.putconn(conn)
    return { 'count': len(fmt_results), 'res': fmt_results }
 
-def find_geometry_by_wkt(wkt, dataset=None, crs='4326'):
+def find_geometry_by_wkt(wkt, dataset=None, crs='4326', operation='intersects'):
    """
    Assumes there is a Postgis database with connection config specified in system environment variables.
    Also assumes there is a table/view called 'combined_geoms' with structure (id, dataset, geom).
@@ -294,11 +298,20 @@ def find_geometry_by_wkt(wkt, dataset=None, crs='4326'):
    global dbpool
    if wkt is None:
      return { 'count': -1, 'res': None, 'errcode': 1}
+   postgis_op = None
+   if operation == 'intersects':
+      postgis_op = "ST_Intersects"
+   elif operation == 'contains':
+      postgis_op = "ST_Contains"
+   elif operation == 'overlaps':
+      postgis_op = "ST_Overlaps"
+   else:  
+     return { 'count': -1, 'res': None, 'errcode': 2}
    query_list = []
    #query 1: no dataset specified so query all
-   query_list.append('SELECT id, dataset FROM combined_geoms WHERE ST_Intersects( ST_Transform(ST_GeomFromText(%s, %s),3577) , geom);')
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE {} ( ST_Transform(ST_GeomFromText(%s, %s),3577) , geom);'.format(postgis_op))
    #query 2: dataset _is_ specified so query by dataset
-   query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = %s and ST_Intersects( ST_Transform(ST_GeomFromText(%s, %s),3577) , geom);')
+   query_list.append('SELECT id, dataset FROM combined_geoms WHERE dataset = %s and ST_Intersects( ST_Transform(ST_GeomFromText(%s, %s),3577) , geom);'.format(postgis_op))
    fmt_results = []
    r_obj = {}
    try:
