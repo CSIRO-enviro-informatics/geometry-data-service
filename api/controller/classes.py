@@ -108,14 +108,20 @@ def search_by_latlng_and_dataset(latlng, dataset):
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
 
-@classes.route('/search/wkt', methods = ['POST'])
+@classes.route('/search/wkt', methods = ['HEAD', 'POST', 'GET'])
 def search_by_wkt():
+  if request.method == 'POST':
     crs = 4326
     if 'crs' in request.args:
        crs = request.args.get('crs','4326')
-    wkt = request.form.get('wkt')
-    dataset = request.form.get('dataset')
-    operation = request.form.get('operation')
+    print(request.args)
+    request_json = request.get_json()
+    wkt = request_json.get('wkt')
+    dataset = request_json.get('dataset')
+    operation = request_json.get('operation')
+    #wkt = request.form.get('wkt')
+    #dataset = request.form.get('dataset')
+    #operation = request.form.get('operation')
     if operation is None:
        list_results = find_geometry_by_wkt(wkt, crs=crs, dataset=dataset)
     else:
@@ -124,6 +130,8 @@ def search_by_wkt():
         return Response("Not Found", status=404)   
     renderer = SearchResultsRenderer(request, request.base_url, list_results, 'page_searchresults.html')
     return renderer.render()
+  elif request.method == 'GET':
+    return "Use POST"
 
 
 
