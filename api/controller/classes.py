@@ -21,6 +21,7 @@ import pprint
 
 classes = Blueprint('classes', __name__)
 
+dataset_mappings = DatasetMappings()
 
 dogs = [
     {
@@ -283,7 +284,7 @@ def find_geometry_by_latlng(latlng, dataset=None, crs='4326'):
             r_obj['id'] = r[0]
             r_obj['dataset'] = r[1]
             r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
-            r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
+            r_obj['feature'] = dataset_mappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
             fmt_results.append(r_obj)
          r_obj = { 'count': len(fmt_results), 'res': fmt_results }
    except Exception as e:
@@ -343,7 +344,7 @@ def find_geometry_by_wkt(wkt, dataset=None, crs='4326', operation='intersects'):
             r_obj['id'] = r[0]
             r_obj['dataset'] = r[1]
             r_obj['geometry'] = request.host_url + "geometry/{dataset}/{id}".format(dataset=r_obj['dataset'],id=r_obj['id'])
-            r_obj['feature'] = DatasetMappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
+            r_obj['feature'] = dataset_mappings.find_resource_uri(r_obj['dataset'],r_obj['id'])
             fmt_results.append(r_obj)
          r_obj = { 'count': len(fmt_results), 'res': fmt_results }
    except Exception as e:

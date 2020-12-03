@@ -10,7 +10,7 @@ import psycopg2
 import os
 from .mappings import DatasetMappings
 
-
+dataset_mappings = DatasetMappings()
 
 GeometryView = View("GeometryView", "A profile of geometry.", ['text/html', 'application/json', 'text/turtle', 'text/plain'],
                  'text/html', namespace="http://example.org/def/geometryview")
@@ -22,7 +22,7 @@ SimplifiedGeomView = View("SimplifiedGeomView", "A profile of the geometry that 
                  'text/html', namespace="http://example.org/def/simplifiedgeomview")
 
 class GeometryRenderer(Renderer):
-    DATASET_RESOURCE_BASE_URI_LOOKUP = DatasetMappings.DATASET_RESOURCE_BASE_URI_LOOKUP
+    #DATASET_RESOURCE_BASE_URI_LOOKUP = dataset_mappings.DATASET_RESOURCE_BASE_URI_LOOKUP
     def __init__(self, request, uri, instance, geom_html_template, **kwargs):
         self.views = {
                        'geometryview': GeometryView,
@@ -123,7 +123,7 @@ class GeometryRenderer(Renderer):
     def _find_resource_uris(self):
         dataset = self.instance["dataset"]
         id = self.instance["id"]
-        prefix = GeometryRenderer.DATASET_RESOURCE_BASE_URI_LOOKUP.get(dataset)
+        prefix = dataset_mappings.get_prefix(dataset)
         if prefix is None:
             return None
         return "{0}/{1}".format(prefix, id)
