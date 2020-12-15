@@ -21,13 +21,17 @@ CentroidView = View("CentroidView", "A profile of geometry's centroid.", ['text/
 SimplifiedGeomView = View("SimplifiedGeomView", "A profile of the geometry that has been simplified.", ['text/html', 'application/json', 'text/turtle', 'text/plain'],
                  'text/html', namespace="http://example.org/def/simplifiedgeomview")
 
+WrappedGeomView = View("WrappedGeomView", "A profile of the geometry that has been wrapped with a featureCollection.", ['text/html', 'application/json', 'text/turtle', 'text/plain'],
+                 'text/html', namespace="http://example.org/def/wrappedgeometryview")
+
 class GeometryRenderer(Renderer):
     #DATASET_RESOURCE_BASE_URI_LOOKUP = dataset_mappings.DATASET_RESOURCE_BASE_URI_LOOKUP
     def __init__(self, request, uri, instance, geom_html_template, **kwargs):
         self.views = {
                        'geometryview': GeometryView,
                        'centroid': CentroidView,
-                       'simplifiedgeom': SimplifiedGeomView 
+                       'simplifiedgeom': SimplifiedGeomView,
+                       'wrapped': WrappedGeomView 
                      }
         self.default_view_token = 'geometryview'
         super(GeometryRenderer, self).__init__(
@@ -81,6 +85,40 @@ class GeometryRenderer(Renderer):
         elif self.format == "text/turtle":
             return Response(self.export_rdf(self, rdf_mime='text/turtle'),
                             mimetype="text/turtle", status=200)
+
+    def _render_wrappedgeomview(self):
+        self.headers['Profile'] = 'http://example.org/def/wrappedgeomview'
+        self._fetch_simplified_geom_from_db()
+        if self.format == "application/json":
+            return Response(json.dumps(self._wrap_geojson_with_featureCollection(self.instance)),
+                            mimetype="application/json", status=200)
+        if self.format == "text/plain":
+            return Response(self._geojson_to_wkt(),
+                            mimetype="text/plain", status=200)
+        elif self.format == "text/html":
+            return Response(render_template(self.geom_html_template, **self.instance, uri=self.uri, request=self.request, view=self.view), mimetype="text/html", status=200)
+        elif self.format == "text/turtle":
+            return Response(self.export_rdf(self, rdf_mime='text/turtle'),
+                            mimetype="text/turtle", status=200)
+
+    def _wrap_geojson_with_featureCollection(self, geom):
+       this_id = geom['id']
+       del(geom['id'])
+       this_dataset = geom['dataset']
+       del(geom['dataset'])
+       featureCollection = {
+                  "type": "FeatureCollection",
+                  "features": [
+                         {
+                            "type": "Feature",
+                            "properties": {
+                               "id": this_id, 
+                               "dataset" : this_dataset
+                            },
+                            "geometry": geom
+                         }]
+                  }
+       return featureCollection
 
     def _render_alternates_view_html(self):
         return Response(
@@ -211,6 +249,8 @@ class GeometryRenderer(Renderer):
             response = self._render_geometryview()
         elif not response and self.view == 'simplifiedgeom':
             response = self._render_simplifiedgeomview()
+        elif not response and self.view == 'wrapped':
+            response = self._render_wrappedgeomview()
         elif not response and self.view == 'centroid':
             response = self._render_centroidview()
         elif self.view == 'alternates':
