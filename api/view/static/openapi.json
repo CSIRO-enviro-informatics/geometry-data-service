@@ -23,6 +23,41 @@
       "description": "Perform search functions"
     }
   ],
+  "components": {
+    "schemas": {
+      "LocationItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "dataset": {
+            "type": "string"
+          },
+          "geometry": {
+            "type": "string"
+          },
+          "feature": {
+            "type": "string"
+          }
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "res": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationItem"
+            }
+          }
+        }
+      }
+    }
+  },
   "paths": {
     "/geometry": {
       "get": {
@@ -440,6 +475,70 @@
             }
           }
         ]
+      }
+    },
+    "/search/wkt": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Get individual geometries that contain the specified position",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "searchGeomByWkt",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dataset",
+                  "wkt"
+                ],
+                "properties": {
+                  "dataset": {
+                    "type": "string",
+                    "example": "asgs16_sa3"
+                  },
+                  "wkt": {
+                    "type": "string",
+                    "example": "POLYGON((150.90464969227213 -33.60051712906992,151.45396609852213 -33.60051712906992,151.45396609852213 -34.07048711355048,150.90464969227213 -34.07048711355048,150.90464969227213 -33.60051712906992))"
+                  },
+                  "operation": {
+                    "type": "string",
+                    "enum": [
+                      "intersects",
+                      "contains",
+                      "overlaps"
+                    ],
+                    "example": "intersects"
+                  },
+                  "crs": {
+                    "type": "number",
+                    "example": 4326
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/search/latlng/{x},{y}/dataset/{dataset_id}": {
