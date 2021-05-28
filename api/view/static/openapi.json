@@ -482,7 +482,7 @@
         "tags": [
           "search"
         ],
-        "summary": "Get individual geometries that contain the specified position",
+        "summary": "Query geometries by WKT with a specified operation. Default operation is intersects. Default CRS is 4326.",
         "description": "",
         "responses": {
           "200": {
